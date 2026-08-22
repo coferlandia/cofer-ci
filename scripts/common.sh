@@ -36,7 +36,7 @@ load_env() {
 }
 
 load_monitor_env() {
-  if [[ -f "$MONITOR_ENV_FILE" ]]; then
+  if [[ -r "$MONITOR_ENV_FILE" ]]; then
     set -a
     # shellcheck disable=SC1091
     source "$MONITOR_ENV_FILE"
@@ -80,7 +80,7 @@ runner_is_busy() {
   [[ -n "$service" ]] || return 1
   cid="$(compose ps -q "$service" 2>/dev/null || true)"
   [[ -n "$cid" ]] || return 1
-  docker exec "$cid" pgrep -f 'Runner.Worker' >/dev/null 2>&1
+  docker exec "$cid" pgrep -x 'Runner.Worker' >/dev/null 2>&1
 }
 
 any_runner_is_busy() {

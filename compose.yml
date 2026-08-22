@@ -78,7 +78,9 @@ services:
     expose:
       - "2376"
     networks:
-      - ci-network-01
+      ci-network-01:
+        aliases:
+          - docker
 
   runner-01:
     <<: *runner-common
@@ -92,7 +94,7 @@ services:
       RUNNER_LABELS: ${RUNNER_LABELS:-coferlandia-ci,docker}
       RUNNER_GROUP: ${RUNNER_GROUP:-Default}
       RUNNER_WORKDIR: ${RUNNER_WORKDIR:-_work}
-      DOCKER_HOST: tcp://docker-ci-01:2376
+      DOCKER_HOST: tcp://docker:2376
       DOCKER_TLS_VERIFY: "1"
       DOCKER_CERT_PATH: /certs/client
       ACTIONS_RUNNER_HOOK_JOB_STARTED: /opt/runner-hooks/pre-job.sh
@@ -120,7 +122,9 @@ services:
     expose:
       - "2376"
     networks:
-      - ci-network-02
+      ci-network-02:
+        aliases:
+          - docker
 
   runner-02:
     <<: *runner-common
@@ -134,7 +138,7 @@ services:
       RUNNER_LABELS: ${RUNNER_LABELS:-coferlandia-ci,docker}
       RUNNER_GROUP: ${RUNNER_GROUP:-Default}
       RUNNER_WORKDIR: ${RUNNER_WORKDIR:-_work}
-      DOCKER_HOST: tcp://docker-ci-02:2376
+      DOCKER_HOST: tcp://docker:2376
       DOCKER_TLS_VERIFY: "1"
       DOCKER_CERT_PATH: /certs/client
       ACTIONS_RUNNER_HOOK_JOB_STARTED: /opt/runner-hooks/pre-job.sh
