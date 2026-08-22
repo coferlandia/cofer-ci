@@ -1,0 +1,11 @@
+[Unit]
+Description=Limpieza diaria de Coferlandia CI
+
+[Timer]
+OnCalendar=*-*-* 04:15:00
+RandomizedDelaySec=15min
+Persistent=true
+Unit=coferlandia-ci-cleanup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,12 @@
+[Unit]
+Description=Ejecuta el watchdog de Coferlandia CI cada cinco minutos
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=30s
+Persistent=true
+Unit=coferlandia-ci-watchdog.service
+
+[Install]
+WantedBy=timers.target

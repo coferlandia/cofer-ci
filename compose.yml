@@ -1,0 +1,161 @@
+name: ${COMPOSE_PROJECT_NAME:-coferlandia-ci}
+
+x-docker-ci-common: &docker-ci-common
+  image: docker:${DIND_IMAGE_TAG:-29-dind}
+  privileged: true
+  restart: unless-stopped
+  environment:
+    DOCKER_TLS_CERTDIR: /certs
+  command:
+    - --storage-driver=overlay2
+    - --log-level=warn
+  cpus: ${DIND_CPUS:-1.25}
+  mem_limit: ${DIND_MEMORY:-2500m}
+  mem_reservation: ${DIND_MEMORY_RESERVATION:-512m}
+  pids_limit: ${DIND_PIDS_LIMIT:-768}
+  shm_size: ${DIND_SHM_SIZE:-384m}
+  healthcheck:
+    test: ["CMD-SHELL", "docker info >/dev/null 2>&1 || exit 1"]
+    interval: 30s
+    timeout: 10s
+    retries: 4
+    start_period: 45s
+  logging:
+    driver: json-file
+    options:
+      max-size: ${DIND_LOG_MAX_SIZE:-20m}
+      max-file: "${DIND_LOG_MAX_FILES:-3}"
+
+x-runner-common: &runner-common
+  build:
+    context: .
+    dockerfile: runner/Dockerfile
+    args:
+      RUNNER_IMAGE_TAG: ${RUNNER_IMAGE_TAG:-latest}
+      COMPOSE_VERSION: ${COMPOSE_VERSION:-v5.1.4}
+  image: coferlandia/ci-runner:${RUNNER_IMAGE_TAG:-latest}
+  restart: unless-stopped
+  init: true
+  command: ["run"]
+  environment:
+    RUNNER_URL: ${RUNNER_URL}
+    RUNNER_LABELS: ${RUNNER_LABELS:-coferlandia-ci,docker}
+    RUNNER_GROUP: ${RUNNER_GROUP:-Default}
+    RUNNER_WORKDIR: ${RUNNER_WORKDIR:-_work}
+    DOCKER_TLS_VERIFY: "1"
+    ACTIONS_RUNNER_HOOK_JOB_STARTED: /opt/runner-hooks/pre-job.sh
+    ACTIONS_RUNNER_HOOK_JOB_COMPLETED: /opt/runner-hooks/post-job.sh
+    RUNNER_TOOL_CACHE: /cache/toolcache
+    NUGET_PACKAGES: /cache/nuget
+    npm_config_cache: /cache/npm
+    PIP_CACHE_DIR: /cache/pip
+  cpus: ${RUNNER_CPUS:-0.50}
+  mem_limit: ${RUNNER_MEMORY:-768m}
+  mem_reservation: ${RUNNER_MEMORY_RESERVATION:-256m}
+  pids_limit: ${RUNNER_PIDS_LIMIT:-256}
+  security_opt:
+    - no-new-privileges:true
+  healthcheck:
+    test: ["CMD-SHELL", "pgrep -f 'Runner.Listener' >/dev/null 2>&1 || exit 1"]
+    interval: 30s
+    timeout: 5s
+    retries: 4
+    start_period: 60s
+  logging:
+    driver: json-file
+    options:
+      max-size: ${RUNNER_LOG_MAX_SIZE:-10m}
+      max-file: "${RUNNER_LOG_MAX_FILES:-3}"
+
+services:
+  docker-ci-01:
+    <<: *docker-ci-common
+    container_name: ${COMPOSE_PROJECT_NAME:-coferlandia-ci}-docker-01
+    volumes:
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/docker-01:/var/lib/docker
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/certs-01:/certs
+      - ./config/docker-daemon.json:/etc/docker/daemon.json:ro
+    expose:
+      - "2376"
+    networks:
+      - ci-network-01
+
+  runner-01:
+    <<: *runner-common
+    container_name: ${COMPOSE_PROJECT_NAME:-coferlandia-ci}-runner-01
+    depends_on:
+      docker-ci-01:
+        condition: service_healthy
+    environment:
+      RUNNER_URL: ${RUNNER_URL}
+      RUNNER_NAME: ${RUNNER_01_NAME:-coferlandia-ci-01}
+      RUNNER_LABELS: ${RUNNER_LABELS:-coferlandia-ci,docker}
+      RUNNER_GROUP: ${RUNNER_GROUP:-Default}
+      RUNNER_WORKDIR: ${RUNNER_WORKDIR:-_work}
+      DOCKER_HOST: tcp://docker-ci-01:2376
+      DOCKER_TLS_VERIFY: "1"
+      DOCKER_CERT_PATH: /certs/client
+      ACTIONS_RUNNER_HOOK_JOB_STARTED: /opt/runner-hooks/pre-job.sh
+      ACTIONS_RUNNER_HOOK_JOB_COMPLETED: /opt/runner-hooks/post-job.sh
+      RUNNER_TOOL_CACHE: /cache/toolcache
+      NUGET_PACKAGES: /cache/nuget
+      npm_config_cache: /cache/npm
+      PIP_CACHE_DIR: /cache/pip
+    volumes:
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/runner-01:/opt/actions-runner
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/work-01:/opt/actions-runner/_work
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/cache-01:/cache
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/certs-01/client:/certs/client:ro
+      - ./hooks:/opt/runner-hooks:ro
+    networks:
+      - ci-network-01
+
+  docker-ci-02:
+    <<: *docker-ci-common
+    container_name: ${COMPOSE_PROJECT_NAME:-coferlandia-ci}-docker-02
+    volumes:
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/docker-02:/var/lib/docker
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/certs-02:/certs
+      - ./config/docker-daemon.json:/etc/docker/daemon.json:ro
+    expose:
+      - "2376"
+    networks:
+      - ci-network-02
+
+  runner-02:
+    <<: *runner-common
+    container_name: ${COMPOSE_PROJECT_NAME:-coferlandia-ci}-runner-02
+    depends_on:
+      docker-ci-02:
+        condition: service_healthy
+    environment:
+      RUNNER_URL: ${RUNNER_URL}
+      RUNNER_NAME: ${RUNNER_02_NAME:-coferlandia-ci-02}
+      RUNNER_LABELS: ${RUNNER_LABELS:-coferlandia-ci,docker}
+      RUNNER_GROUP: ${RUNNER_GROUP:-Default}
+      RUNNER_WORKDIR: ${RUNNER_WORKDIR:-_work}
+      DOCKER_HOST: tcp://docker-ci-02:2376
+      DOCKER_TLS_VERIFY: "1"
+      DOCKER_CERT_PATH: /certs/client
+      ACTIONS_RUNNER_HOOK_JOB_STARTED: /opt/runner-hooks/pre-job.sh
+      ACTIONS_RUNNER_HOOK_JOB_COMPLETED: /opt/runner-hooks/post-job.sh
+      RUNNER_TOOL_CACHE: /cache/toolcache
+      NUGET_PACKAGES: /cache/nuget
+      npm_config_cache: /cache/npm
+      PIP_CACHE_DIR: /cache/pip
+    volumes:
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/runner-02:/opt/actions-runner
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/work-02:/opt/actions-runner/_work
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/cache-02:/cache
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/certs-02/client:/certs/client:ro
+      - ./hooks:/opt/runner-hooks:ro
+    networks:
+      - ci-network-02
+
+networks:
+  ci-network-01:
+    name: ${COMPOSE_PROJECT_NAME:-coferlandia-ci}-network-01
+    driver: bridge
+  ci-network-02:
+    name: ${COMPOSE_PROJECT_NAME:-coferlandia-ci}-network-02
+    driver: bridge

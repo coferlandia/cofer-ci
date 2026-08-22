@@ -1,0 +1,43 @@
+name: Self-hosted runners parallel smoke test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parallel-smoke:
+    runs-on: [self-hosted, linux, coferlandia-ci]
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        slot: [1, 2]
+
+    env:
+      COMPOSE_PROJECT_NAME: smoke-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.slot }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          clean: true
+
+      - name: Runner information
+        run: |
+          echo "Matrix slot: ${{ matrix.slot }}"
+          echo "Runner: $RUNNER_NAME"
+          uname -a
+          uname -m
+          id
+          df -h
+          docker version
+          docker compose version
+          docker info
+
+      - name: Execute isolated container
+        run: |
+          docker run --rm alpine:3.22 sh -c \
+            'echo "Docker isolated smoke test"; sleep 20; uname -m'

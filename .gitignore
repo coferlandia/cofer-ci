@@ -1,0 +1,6 @@
+.env
+*.local
+*.log
+state/
+reports/
+.DS_Store

@@ -1,0 +1,6 @@
+Coferlandia CI Runner
+Copyright 2026 Diego Cofré / Coferlandia
+
+This product includes a custom container image derived from the official
+GitHub Actions Runner image and uses Docker components under their respective
+licenses.

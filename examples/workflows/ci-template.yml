@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: [self-hosted, linux, coferlandia-ci]
+    timeout-minutes: 30
+
+    env:
+      COMPOSE_PROJECT_NAME: ci-${{ github.run_id }}-${{ github.run_attempt }}
+
+    steps:
+      - name: Checkout limpio
+        uses: actions/checkout@v6
+        with:
+          clean: true
+
+      - name: Build y tests
+        run: |
+          docker compose build
+          docker compose up --abort-on-container-exit --exit-code-from tests
+
+      - name: Cerrar ambiente de prueba
+        if: always()
+        run: docker compose down --volumes --remove-orphans

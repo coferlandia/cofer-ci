@@ -1,0 +1,13 @@
+[Unit]
+Description=Limpieza controlada de Coferlandia CI (dos runners)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=@@PROJECT_DIR@@
+ExecStart=@@PROJECT_DIR@@/scripts/cleanup.sh
+User=root
+Group=root
+Nice=15
+IOSchedulingClass=idle
