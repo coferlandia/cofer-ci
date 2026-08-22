@@ -1,0 +1,15 @@
+timestamp=2026-08-04T02:24:53+00:00
+hostname=coferlandiaone
+mode=audit
+root_total_bytes=206900281344
+root_used_bytes=176808693760
+root_available_bytes=30074810368
+root_used_percent=86
+memory_total_bytes=
+memory_available_bytes=
+swap_total_bytes=
+swap_free_bytes=
+docker_containers_total=9
+docker_containers_running=8
+docker_images_total=16
+docker_volumes_total=49
