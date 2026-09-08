@@ -45,11 +45,19 @@ for service in runner-01 runner-02 docker-ci-01 docker-ci-02; do
   grep -q "^  ${service}:" compose.yml && ok "Servicio ${service}" || fail "Servicio ${service}"
 done
 
+for setting in RUNNER_OFFLINE_CHECKS_BEFORE_RESTART RUNNER_RESTART_COOLDOWN_SECONDS; do
+  grep -q "^${setting}=" monitoring.env.example && \
+    ok "Configuración watchdog ${setting}" || \
+    fail "Configuración watchdog ${setting}"
+done
+
 for doc in \
   docs/CLEAN_INSTALL.md \
+  docs/UPGRADE.md \
   docs/ARCHITECTURE.md \
   docs/GITHUB_CONFIGURATION.md \
   docs/MAINTENANCE.md \
+  docs/MONITORING.md \
   docs/TROUBLESHOOTING.md; do
   [[ -s "$doc" ]] && ok "Documento $doc" || fail "Documento $doc"
 done
