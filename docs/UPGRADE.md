@@ -7,11 +7,11 @@ Este procedimiento cubre una actualización desde 0.2.x, 0.3.0 o un estado mixto
 Actualizar el paquete operativo sin perder:
 
 - `/srv/coferlandia-ci`;
-- registros y credenciales existentes de los runners;
+- registros y credenciales existentes cuando la topología persistente sea compatible;
 - workspaces y cachés persistentes;
-- almacenamiento de ambos Docker-in-Docker.
+- almacenamiento Docker CI reutilizable cuando corresponda.
 
-No vuelva a registrar runners que ya aparecen correctamente en GitHub salvo que exista evidencia explícita de corrupción de credenciales.
+No vuelva a registrar runners que ya aparecen correctamente en GitHub salvo que la migración de topología lo requiera o exista evidencia explícita de corrupción de credenciales.
 
 ## 1. Confirmar que no haya jobs en ejecución
 
@@ -22,9 +22,9 @@ gh api /orgs/coferlandia/actions/runners \
   --jq '.runners[] | select(.name | startswith("coferlandia-ci")) | "\(.name) status=\(.status) busy=\(.busy)"'
 ```
 
-Ambos deben estar `busy=false`.
+Los runners existentes deben estar `busy=false`.
 
-También puede comprobar workers locales:
+También puede comprobar workers locales de la topología 0.3.x:
 
 ```bash
 docker exec coferlandia-ci-runner-01 pgrep -af 'Runner.Worker' || true
@@ -41,16 +41,30 @@ cd ~/docker-projects/coferlandia-ci-runner
 cat VERSION 2>/dev/null || true
 docker compose config --services
 
+docker ps --format 'table {{.Names}}\t{{.Status}}'
+```
+
+Si existen los contenedores 0.3.x, compruebe además sus labels Compose:
+
+```bash
 docker inspect -f '{{.Name}} -> {{index .Config.Labels "com.docker.compose.service"}}' \
   coferlandia-ci-runner-01 \
   coferlandia-ci-runner-02 2>/dev/null || true
 ```
 
-Si `docker compose config --services` muestra sólo `runner` y `docker-ci`, pero los contenedores existentes están asociados a `runner-01`, `runner-02`, `docker-ci-01` y `docker-ci-02`, la instalación está mezclada. **No ejecute `docker compose up`, `down`, `start`, `stop` ni `restart` desde ese directorio antiguo.**
+Clasifique la instalación antes de seguir:
+
+- **0.3.x coherente**: el Compose y los contenedores describen `runner-01`, `runner-02`, `docker-ci-01`, `docker-ci-02`.
+- **Estado mixto**: el Compose local muestra sólo `runner` y `docker-ci`, pero los contenedores activos pertenecen a `runner-01`, `runner-02`, `docker-ci-01`, `docker-ci-02`.
+- **0.2.x pura**: tanto archivos como contenedores pertenecen a la topología antigua de un runner y un Docker CI.
+
+En un estado mixto, **no ejecute `docker compose up`, `down`, `start`, `stop` ni `restart` desde el directorio antiguo**.
+
+En una 0.2.x pura tampoco asuma que las credenciales del único runner pueden reutilizarse directamente como `runner-01`/`runner-02`: la migración cambia la topología persistente. Conserve `/srv/coferlandia-ci` como backup, pero registre la topología 0.3.x mediante el procedimiento normal si no existen ya los directorios y registros independientes `runner-01` y `runner-02`.
 
 ## 3. Respaldar sólo los archivos operativos
 
-El almacenamiento persistente no se mueve.
+El almacenamiento persistente no se mueve ni se borra.
 
 ```bash
 cd ~/docker-projects
@@ -59,6 +73,12 @@ mv coferlandia-ci-runner \
 ```
 
 Conserve la ruta del backup para recuperar `.env` y facilitar rollback.
+
+Para una instalación 0.2.x pura, haga también un inventario de `/srv/coferlandia-ci` antes de crear la topología nueva:
+
+```bash
+sudo find /srv/coferlandia-ci -maxdepth 2 -mindepth 1 -printf '%M %u:%g %p\n' | sort
+```
 
 ## 4. Instalar el paquete nuevo
 
@@ -118,19 +138,32 @@ docker compose config >/tmp/coferlandia-ci-compose.yml
 
 ## 6. Reconciliar los contenedores con el Compose nuevo
 
+### 6.1 Estado mixto o 0.3.x existente
+
 Compruebe primero qué contenedores existen:
 
 ```bash
 docker compose ps -a
 ```
 
-Si los cuatro servicios ya corresponden al proyecto y los runners están registrados en `/srv/coferlandia-ci`, aplique el Compose nuevo sin borrar almacenamiento:
+Si los cuatro servicios ya corresponden al proyecto y los runners están registrados en `/srv/coferlandia-ci/runner-01` y `/srv/coferlandia-ci/runner-02`, aplique el Compose nuevo sin borrar almacenamiento:
 
 ```bash
 docker compose up -d --build
 ```
 
-No ejecute `docker compose down -v`. Los directorios bajo `/srv/coferlandia-ci` son la fuente persistente del estado del runner y de cada Docker CI.
+### 6.2 Instalación 0.2.x pura
+
+Si no existen los directorios persistentes independientes de 0.3.x, no fuerce la reutilización del registro único antiguo. Prepare la estructura nueva y registre ambos runners con los scripts actuales:
+
+```bash
+sudo ./scripts/install-host.sh
+./scripts/register-runners.sh
+```
+
+Mantenga el almacenamiento 0.2.x respaldado hasta completar la validación. La migración de caches o workspaces antiguos es opcional y no debe incluir archivos de credenciales del runner entre topologías distintas.
+
+En todos los casos, **no ejecute `docker compose down -v`**. Los directorios bajo `/srv/coferlandia-ci` son persistentes y deben conservarse hasta cerrar la migración.
 
 ## 7. Reinstalar systemd desde el directorio nuevo
 
@@ -207,7 +240,7 @@ Los dos runners deben regresar `online/Idle` sin re-registro manual.
 
 ## 11. Rollback
 
-Si el paquete nuevo presenta un problema antes de modificar el almacenamiento persistente:
+Si el paquete nuevo presenta un problema antes de borrar o transformar almacenamiento persistente:
 
 1. detenga únicamente los contenedores creados por la versión nueva;
 2. renombre el directorio nuevo;
