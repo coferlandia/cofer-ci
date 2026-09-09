@@ -1,6 +1,6 @@
 # Manual completo de instalación limpia
 
-Este procedimiento parte de una VM sin una instalación previa de Coferlandia CI. No es un manual de actualización.
+Este procedimiento parte de una VM sin una instalación previa de Coferlandia CI. No es un manual de actualización. Para instalaciones existentes use [UPGRADE.md](UPGRADE.md).
 
 ## 1. Resultado esperado
 
@@ -38,8 +38,8 @@ En la computadora local:
 cd ~/Documents/dev/coferlandia/cofer-ci
 
 scp \
-  coferlandia-ci-runner-0.3.0.zip \
-  coferlandia-ci-runner-0.3.0.zip.sha256 \
+  coferlandia-ci-runner-0.3.1.zip \
+  coferlandia-ci-runner-0.3.1.zip.sha256 \
   coferlandia:~/uploads/
 ```
 
@@ -53,13 +53,13 @@ Verificar integridad:
 
 ```bash
 cd ~/uploads
-sha256sum -c coferlandia-ci-runner-0.3.0.zip.sha256
+sha256sum -c coferlandia-ci-runner-0.3.1.zip.sha256
 ```
 
 Resultado esperado:
 
 ```text
-coferlandia-ci-runner-0.3.0.zip: OK
+coferlandia-ci-runner-0.3.1.zip: OK
 ```
 
 ## 4. Instalar utilidades base
@@ -94,7 +94,7 @@ mkdir -p ~/docker-projects
 cd ~/docker-projects
 
 rm -rf coferlandia-ci-runner
-unzip ~/uploads/coferlandia-ci-runner-0.3.0.zip
+unzip ~/uploads/coferlandia-ci-runner-0.3.1.zip
 cd coferlandia-ci-runner
 ```
 
@@ -106,7 +106,7 @@ pwd
 find . -maxdepth 2 -type f | sort
 ```
 
-`VERSION` debe mostrar `0.3.0`.
+`VERSION` debe mostrar `0.3.1`.
 
 ## 6. Crear y revisar `.env`
 
@@ -240,6 +240,8 @@ docker
 sudo ./scripts/install-systemd.sh
 ```
 
+Configure `/etc/coferlandia-ci-watchdog.env`, incluyendo `GITHUB_MONITOR_TOKEN` si desea monitoreo remoto y self-healing. La política y parámetros están documentados en [MONITORING.md](MONITORING.md).
+
 Verificar:
 
 ```bash
@@ -257,10 +259,10 @@ sudo systemctl status coferlandia-ci-watchdog.service --no-pager
 ## 13. Verificación integral
 
 ```bash
-./scripts/verify-installation.sh
+sudo ./scripts/verify-installation.sh
 ```
 
-Debe validar los dos registros, los cuatro contenedores, ambos Docker CI, Docker Compose y salida HTTPS.
+Debe validar los dos registros, los cuatro contenedores, ambos Docker CI, Docker Compose, salida HTTPS, broker de Actions, timers systemd y, cuando el token de monitoreo esté configurado, que GitHub reporte ambos runners `online`.
 
 ## 14. Smoke test paralelo
 
@@ -285,7 +287,7 @@ docker compose logs -f runner-01 runner-02
 Después:
 
 ```bash
-./scripts/status.sh
+sudo ./scripts/status.sh
 df -h /srv/coferlandia-ci
 ```
 
@@ -312,7 +314,8 @@ Al volver:
 
 ```bash
 cd ~/docker-projects/coferlandia-ci-runner
-./scripts/status.sh
+sudo ./scripts/status.sh
+sudo ./scripts/verify-installation.sh
 systemctl list-timers 'coferlandia-ci-*' --all
 ```
 
@@ -328,4 +331,5 @@ La instalación está terminada cuando:
 - cada Docker CI muestra únicamente sus propios recursos;
 - `/srv/coferlandia-ci` está montado;
 - los timers están habilitados;
+- el monitoreo remoto detecta runners `offline` cuando está configurado;
 - no hay puertos públicos nuevos.

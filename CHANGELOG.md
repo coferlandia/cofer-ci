@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.1 - 2026-09-08
+
+- Self-healing seguro para runners que permanezcan `offline` en GitHub mientras el listener local siga activo.
+- Debounce configurable antes del restart y cooldown por runner para evitar ciclos de reinicio.
+- Un único intento automático por incidente hasta que GitHub vuelva a reportar el runner `online`.
+- Persistencia de estado por runner bajo `/var/lib/coferlandia-ci-watchdog`.
+- Verificación integral ampliada con estado remoto de GitHub, broker de Actions y timers systemd.
+- Documentación de upgrade desde 0.2.x, 0.3.0 y estados mixtos, preservando `/srv/coferlandia-ci`.
+- Documentación de la diferencia entre health local del contenedor y disponibilidad remota del runner.
+
 ## 0.3.0 - 2026-08-04
 
 - Capacidad para dos jobs concurrentes mediante dos runners independientes.

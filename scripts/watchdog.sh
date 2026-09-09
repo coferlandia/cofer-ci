@@ -15,6 +15,15 @@ chmod 0700 "$STATE_DIR"
 TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-}"
 ALERT_REPEAT_SECONDS="${ALERT_REPEAT_SECONDS:-3600}"
+RUNNER_OFFLINE_CHECKS_BEFORE_RESTART="${RUNNER_OFFLINE_CHECKS_BEFORE_RESTART:-2}"
+RUNNER_RESTART_COOLDOWN_SECONDS="${RUNNER_RESTART_COOLDOWN_SECONDS:-1800}"
+
+if ! [[ "$RUNNER_OFFLINE_CHECKS_BEFORE_RESTART" =~ ^[1-9][0-9]*$ ]]; then
+  fatal "RUNNER_OFFLINE_CHECKS_BEFORE_RESTART debe ser un entero mayor o igual a 1"
+fi
+if ! [[ "$RUNNER_RESTART_COOLDOWN_SECONDS" =~ ^[0-9]+$ ]]; then
+  fatal "RUNNER_RESTART_COOLDOWN_SECONDS debe ser un entero mayor o igual a 0"
+fi
 
 send_telegram() {
   local message="$1"
@@ -29,6 +38,34 @@ send_telegram() {
     --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
     --data-urlencode "text=${message}" \
     >/dev/null
+}
+
+runner_state_file() {
+  printf '%s/%s.env' "$STATE_DIR" "$1"
+}
+
+load_runner_state() {
+  local service="$1" file
+  file="$(runner_state_file "$service")"
+  runner_offline_checks=0
+  runner_last_restart_at=0
+  runner_recovery_pending=0
+  if [[ -f "$file" ]]; then
+    # Archivo generado exclusivamente por este watchdog dentro de un directorio 0700.
+    # shellcheck disable=SC1090
+    source "$file"
+  fi
+}
+
+save_runner_state() {
+  local service="$1" file
+  file="$(runner_state_file "$service")"
+  cat > "$file" <<EOF_RUNNER_STATE
+runner_offline_checks=${runner_offline_checks}
+runner_last_restart_at=${runner_last_restart_at}
+runner_recovery_pending=${runner_recovery_pending}
+EOF_RUNNER_STATE
+  chmod 0600 "$file"
 }
 
 issues=()
@@ -80,6 +117,8 @@ else
   fi
 fi
 
+now="$(date +%s)"
+
 if [[ -n "${GITHUB_MONITOR_TOKEN:-}" ]]; then
   if [[ "${GITHUB_SCOPE_TYPE:-org}" == "repo" ]]; then
     api="https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPOSITORY}/actions/runners?per_page=100"
@@ -95,21 +134,101 @@ if [[ -n "${GITHUB_MONITOR_TOKEN:-}" ]]; then
       "$api" 2>/dev/null || true
   )"
 
-  for service in "${RUNNER_SERVICES[@]}"; do
-    name="$(runner_name "$service")"
-    remote_status="$(
-      jq -r --arg name "$name" \
-        '.runners[]? | select(.name == $name) | .status' \
-        <<<"$response" |
-        head -n1
-    )"
-    [[ -n "$remote_status" ]] || issues+=("GitHub no encuentra ${name}")
-    [[ -z "$remote_status" || "$remote_status" == "online" ]] || \
-      issues+=("GitHub ${name}: ${remote_status}")
-  done
+  if ! jq -e '.runners | arrays' <<<"$response" >/dev/null 2>&1; then
+    issues+=("No se pudo consultar el estado remoto de runners en GitHub")
+  else
+    for service in "${RUNNER_SERVICES[@]}"; do
+      name="$(runner_name "$service")"
+      remote_status="$(
+        jq -r --arg name "$name" \
+          '.runners[]? | select(.name == $name) | .status' \
+          <<<"$response" |
+          head -n1
+      )"
+
+      load_runner_state "$service"
+
+      if [[ -z "$remote_status" ]]; then
+        issues+=("GitHub no encuentra ${name}")
+        save_runner_state "$service"
+        continue
+      fi
+
+      if [[ "$remote_status" == "online" ]]; then
+        if (( runner_offline_checks > 0 || runner_recovery_pending == 1 )); then
+          log "${name} volvió a estar online"
+        fi
+        runner_offline_checks=0
+        runner_recovery_pending=0
+        save_runner_state "$service"
+        continue
+      fi
+
+      if [[ "$remote_status" != "offline" ]]; then
+        issues+=("GitHub ${name}: estado remoto inesperado ${remote_status}")
+        save_runner_state "$service"
+        continue
+      fi
+
+      if (( runner_recovery_pending == 1 )); then
+        issues+=("GitHub ${name}: offline; auto-recuperación pendiente")
+        save_runner_state "$service"
+        continue
+      fi
+
+      runner_offline_checks=$((runner_offline_checks + 1))
+
+      if (( runner_offline_checks < RUNNER_OFFLINE_CHECKS_BEFORE_RESTART )); then
+        log "${name} offline (${runner_offline_checks}/${RUNNER_OFFLINE_CHECKS_BEFORE_RESTART}); esperando confirmación antes de reiniciar"
+        save_runner_state "$service"
+        continue
+      fi
+
+      seconds_since_restart=$((now - runner_last_restart_at))
+      if (( runner_last_restart_at > 0 && seconds_since_restart < RUNNER_RESTART_COOLDOWN_SECONDS )); then
+        issues+=("GitHub ${name}: offline; reinicio automático bloqueado por cooldown")
+        save_runner_state "$service"
+        continue
+      fi
+
+      if runner_is_busy "$service"; then
+        issues+=("GitHub ${name}: offline pero ${service} tiene Runner.Worker activo; no se reinicia")
+        save_runner_state "$service"
+        continue
+      fi
+
+      cid="$(compose ps -q "$service" 2>/dev/null || true)"
+      local_state=""
+      local_health=""
+      if [[ -n "$cid" ]]; then
+        local_state="$(docker inspect -f '{{.State.Status}}' "$cid" 2>/dev/null || true)"
+        local_health="$(
+          docker inspect \
+            -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}n/a{{end}}' \
+            "$cid" 2>/dev/null || true
+        )"
+      fi
+
+      if [[ "$local_state" != "running" || "$local_health" != "healthy" ]]; then
+        issues+=("GitHub ${name}: offline y ${service} no está localmente healthy; no se aplica self-healing remoto")
+        save_runner_state "$service"
+        continue
+      fi
+
+      runner_last_restart_at="$now"
+      if compose restart "$service" >/dev/null 2>&1; then
+        runner_offline_checks=0
+        runner_recovery_pending=1
+        issues+=("GitHub ${name}: offline; auto-recuperación pendiente")
+        log "Se reinició únicamente ${service} para recuperar ${name}"
+      else
+        issues+=("GitHub ${name}: offline; falló el reinicio automático de ${service}")
+      fi
+      save_runner_state "$service"
+    done
+  fi
 fi
 
-now="$(date +%s)"
 previous_status="unknown"
 previous_fingerprint=""
 last_alert_at=0
