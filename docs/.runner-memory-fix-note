@@ -1,1 +1,0 @@
-SecretarIA RELEASE/FULL validation reproduced listener OOM (exit 137) with the previous 768m runner cgroup limit. The default listener memory is now 3g; test semantics remain unchanged.
