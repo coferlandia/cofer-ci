@@ -64,7 +64,7 @@ sudo ./scripts/install-host.sh
 ./scripts/check-prerequisites.sh
 ./scripts/register-runners.sh
 sudo ./scripts/install-systemd.sh
-./scripts/verify-installation.sh
+sudo ./scripts/verify-installation.sh
 ```
 
 ## 3. Relevamiento posterior en reposo
@@ -162,13 +162,13 @@ La configuración predeterminada establece máximos, no reservas:
 
 ```env
 RUNNER_CPUS=0.50
-RUNNER_MEMORY=768m
+RUNNER_MEMORY=3g
 DIND_CPUS=1.25
 DIND_MEMORY=2500m
 CI_STORAGE_SIZE=30G
 ```
 
-No aumente estos valores hasta observar dos jobs simultáneos reales. Si la VM queda con poca memoria disponible, reduzca primero `DIND_MEMORY` o limite los servicios levantados por los tests.
+El límite de memoria del listener debe ser suficiente para instalaciones de dependencias y suites completas ejecutadas directamente en el runner. Ajuste estos valores con evidencia de jobs reales y conserve margen para el stack productivo. Si la VM queda con poca memoria disponible, reduzca primero `DIND_MEMORY` o limite los servicios levantados por los tests.
 
 ## 9. Copiar los reportes a la PC
 
