@@ -8,6 +8,44 @@ docker compose ps
 df -h / /srv/coferlandia-ci
 ```
 
+## Un job termina con exit 137 o aparece `Killed`
+
+`137` normalmente significa que el proceso recibió `SIGKILL`. En estos runners, si una suite muestra todos sus tests aprobados y luego aparece `Killed`, primero descarte un OOM del cgroup antes de investigar el código de la aplicación.
+
+Busque evidencia del kernel en la ventana exacta del fallo:
+
+```bash
+sudo journalctl -k --utc \
+  --since "YYYY-MM-DD HH:MM:SS" \
+  --until "YYYY-MM-DD HH:MM:SS" \
+  | grep -Ei 'oom|out of memory|killed process|memory cgroup|memory limit'
+```
+
+Revise además el límite y los contadores del runner afectado:
+
+```bash
+docker inspect coferlandia-ci-runner-01 \
+  --format 'memory={{.HostConfig.Memory}} memory_swap={{.HostConfig.MemorySwap}} state_oom_killed={{.State.OOMKilled}}'
+
+docker exec coferlandia-ci-runner-01 sh -lc '
+  echo -n "memory.max="; cat /sys/fs/cgroup/memory.max
+  echo -n "memory.current="; cat /sys/fs/cgroup/memory.current
+  echo -n "memory.peak="; cat /sys/fs/cgroup/memory.peak
+  cat /sys/fs/cgroup/memory.events
+'
+```
+
+Si `memory.events` muestra `oom_kill 1` o más, o el kernel informa `Memory cgroup out of memory`, el límite del contenedor fue alcanzado aunque `free -h` muestre memoria disponible en el host. No trate ese caso como un test fallido.
+
+La línea base actual usa `RUNNER_MEMORY=5g`. Después de modificar `.env`, valide y recree sólo los listeners:
+
+```bash
+docker compose config | grep -A8 -B2 'mem_limit'
+docker compose up -d --force-recreate runner-01 runner-02
+```
+
+Confirme que ambos vuelvan a `healthy` y que `memory.max` refleje el nuevo límite antes de reejecutar el workflow.
+
 ## Un runner aparece offline
 
 Primero compare salud local con estado remoto:

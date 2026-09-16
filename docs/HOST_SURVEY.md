@@ -156,19 +156,37 @@ Revise especialmente:
 - servicios fallidos: la instalación no debería agregar fallos de `systemd`;
 - puertos: no debería aparecer un puerto público nuevo del runner.
 
+Para límites de memoria, revise también el cgroup del contenedor:
+
+```bash
+docker exec coferlandia-ci-runner-01 sh -lc '
+  cat /sys/fs/cgroup/memory.max
+  cat /sys/fs/cgroup/memory.current
+  cat /sys/fs/cgroup/memory.peak
+  cat /sys/fs/cgroup/memory.events
+'
+```
+
+Un `oom_kill` mayor que cero confirma que el kernel finalizó un proceso dentro del límite del contenedor aunque el host todavía tenga memoria disponible.
+
 ## 8. Valores iniciales a revisar
 
 La configuración predeterminada establece máximos, no reservas:
 
 ```env
 RUNNER_CPUS=0.50
-RUNNER_MEMORY=3g
+RUNNER_MEMORY=5g
+RUNNER_MEMORY_RESERVATION=512m
+RUNNER_PIDS_LIMIT=256
 DIND_CPUS=1.25
-DIND_MEMORY=2500m
+DIND_MEMORY=4g
+DIND_MEMORY_RESERVATION=512m
+DIND_PIDS_LIMIT=1024
+DIND_SHM_SIZE=512m
 CI_STORAGE_SIZE=30G
 ```
 
-El límite de memoria del listener debe ser suficiente para instalaciones de dependencias y suites completas ejecutadas directamente en el runner. Ajuste estos valores con evidencia de jobs reales y conserve margen para el stack productivo. Si la VM queda con poca memoria disponible, reduzca primero `DIND_MEMORY` o limite los servicios levantados por los tests.
+El límite de 5 GiB del listener fue validado después de un OOM real con `RUNNER_MEMORY=3g` durante una suite completa. Ajuste los valores con evidencia de jobs reales y conserve margen para el stack productivo. Si la VM queda con poca memoria disponible, reduzca concurrencia o dimensione el host antes de recortar el runner por debajo de lo requerido por las suites completas.
 
 ## 9. Copiar los reportes a la PC
 
