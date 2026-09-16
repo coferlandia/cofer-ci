@@ -54,18 +54,20 @@ Por instancia:
 
 ```env
 RUNNER_CPUS=0.50
-RUNNER_MEMORY=768m
+RUNNER_MEMORY=5g
 DIND_CPUS=1.25
-DIND_MEMORY=2500m
+DIND_MEMORY=4g
+DIND_PIDS_LIMIT=1024
+DIND_SHM_SIZE=512m
 ```
 
-Máximo agregado aproximado del stack:
+Máximo agregado aproximado del stack, considerando los límites de memoria y CPU de los cuatro contenedores:
 
 - CPU: 3,5 CPU lógicas;
-- memoria: 6,5 GiB;
+- memoria: 18 GiB;
 - almacenamiento: 30 GiB compartidos como techo.
 
-Los límites son máximos, no reservas. Para una VM con otras cargas, observe el primer período de uso y ajústelos según la duración de los jobs y la latencia de los servicios productivos.
+Los límites son máximos, no reservas. La línea base de 5 GiB por runner se adoptó después de observar un OOM real de cgroup durante una suite backend completa ejecutada directamente en el listener. Para una VM con otras cargas, conserve margen para el sistema operativo y el stack productivo, y ajuste con evidencia de `docker stats`, `memory.events` y relevamientos del host.
 
 ## Datos persistentes
 

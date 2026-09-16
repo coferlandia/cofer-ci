@@ -10,10 +10,10 @@ x-docker-ci-common: &docker-ci-common
     - --storage-driver=overlay2
     - --log-level=warn
   cpus: ${DIND_CPUS:-1.25}
-  mem_limit: ${DIND_MEMORY:-2500m}
+  mem_limit: ${DIND_MEMORY:-4g}
   mem_reservation: ${DIND_MEMORY_RESERVATION:-512m}
-  pids_limit: ${DIND_PIDS_LIMIT:-768}
-  shm_size: ${DIND_SHM_SIZE:-384m}
+  pids_limit: ${DIND_PIDS_LIMIT:-1024}
+  shm_size: ${DIND_SHM_SIZE:-512m}
   healthcheck:
     test: ["CMD-SHELL", "docker info >/dev/null 2>&1 || exit 1"]
     interval: 30s
@@ -50,7 +50,7 @@ x-runner-common: &runner-common
     npm_config_cache: /cache/npm
     PIP_CACHE_DIR: /cache/pip
   cpus: ${RUNNER_CPUS:-0.50}
-  mem_limit: ${RUNNER_MEMORY:-3g}
+  mem_limit: ${RUNNER_MEMORY:-5g}
   mem_reservation: ${RUNNER_MEMORY_RESERVATION:-512m}
   pids_limit: ${RUNNER_PIDS_LIMIT:-256}
   security_opt:

@@ -27,8 +27,10 @@ Al finalizar existirán:
 Configuración recomendada para la VM compartida utilizada durante el diseño:
 
 - 4 CPU lógicas;
-- 16 GiB de RAM o más;
+- 24 GiB de RAM o más;
 - 60 GiB libres o más antes de instalar.
+
+La línea base permite hasta 18 GiB de memoria agregada entre runners y Docker-in-Docker. Los límites son máximos, no reservas; una VM menor puede funcionar con cargas livianas, pero debe ajustar recursos o concurrencia antes de ejecutar dos validaciones completas simultáneas.
 
 ## 3. Transferir el paquete desde Windows/Git Bash
 
@@ -126,14 +128,21 @@ RUNNER_GROUP=Default
 CI_STORAGE_SIZE=30G
 ```
 
-Límites recomendados iniciales:
+Límites recomendados actuales:
 
 ```env
 RUNNER_CPUS=0.50
-RUNNER_MEMORY=768m
+RUNNER_MEMORY=5g
+RUNNER_MEMORY_RESERVATION=512m
+RUNNER_PIDS_LIMIT=256
 DIND_CPUS=1.25
-DIND_MEMORY=2500m
+DIND_MEMORY=4g
+DIND_MEMORY_RESERVATION=512m
+DIND_PIDS_LIMIT=1024
+DIND_SHM_SIZE=512m
 ```
+
+La línea base de 5 GiB por runner se adoptó después de confirmar un OOM de cgroup en una suite completa que había terminado sus tests pero fue finalizada con `SIGKILL`/exit 137 durante el cierre de `pytest`.
 
 No coloque tokens de GitHub ni secretos de producción en `.env`.
 
