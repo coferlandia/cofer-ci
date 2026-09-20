@@ -22,7 +22,7 @@ set +a
 
 : "${CI_STORAGE_ROOT:=/srv/coferlandia-ci}"
 : "${CI_STORAGE_IMAGE:=/var/lib/coferlandia-ci.img}"
-: "${CI_STORAGE_SIZE:=30G}"
+: "${CI_STORAGE_SIZE:=45G}"
 
 for cmd in truncate mkfs.ext4 mount findmnt numfmt; do
   command -v "$cmd" >/dev/null 2>&1 || {
@@ -62,33 +62,16 @@ if ! mountpoint -q "$CI_STORAGE_ROOT"; then
   mount "$CI_STORAGE_ROOT"
 fi
 
-for index in 01 02; do
-  mkdir -p \
-    "$CI_STORAGE_ROOT/runner-${index}" \
-    "$CI_STORAGE_ROOT/work-${index}" \
-    "$CI_STORAGE_ROOT/cache-${index}/toolcache" \
-    "$CI_STORAGE_ROOT/cache-${index}/nuget" \
-    "$CI_STORAGE_ROOT/cache-${index}/npm" \
-    "$CI_STORAGE_ROOT/cache-${index}/pip" \
-    "$CI_STORAGE_ROOT/docker-${index}" \
-    "$CI_STORAGE_ROOT/certs-${index}"
+for index in 01 02 03; do
+  mkdir -p     "$CI_STORAGE_ROOT/runner-${index}"     "$CI_STORAGE_ROOT/work-${index}"     "$CI_STORAGE_ROOT/cache-${index}/toolcache"     "$CI_STORAGE_ROOT/cache-${index}/nuget"     "$CI_STORAGE_ROOT/cache-${index}/npm"     "$CI_STORAGE_ROOT/cache-${index}/pip"     "$CI_STORAGE_ROOT/docker-${index}"     "$CI_STORAGE_ROOT/certs-${index}"
 
-  chown -R 1001:123 \
-    "$CI_STORAGE_ROOT/runner-${index}" \
-    "$CI_STORAGE_ROOT/work-${index}" \
-    "$CI_STORAGE_ROOT/cache-${index}"
+  chown -R 1001:123     "$CI_STORAGE_ROOT/runner-${index}"     "$CI_STORAGE_ROOT/work-${index}"     "$CI_STORAGE_ROOT/cache-${index}"
 
-  chmod 0711 \
-    "$CI_STORAGE_ROOT/runner-${index}" \
-    "$CI_STORAGE_ROOT/work-${index}" \
-    "$CI_STORAGE_ROOT/cache-${index}"
+  chmod 0711     "$CI_STORAGE_ROOT/runner-${index}"     "$CI_STORAGE_ROOT/work-${index}"     "$CI_STORAGE_ROOT/cache-${index}"
 done
 
 chmod 0755 "$CI_STORAGE_ROOT"
-chmod +x \
-  "$PROJECT_DIR"/runner/*.sh \
-  "$PROJECT_DIR"/hooks/*.sh \
-  "$PROJECT_DIR"/scripts/*.sh
+chmod +x   "$PROJECT_DIR"/runner/*.sh   "$PROJECT_DIR"/hooks/*.sh   "$PROJECT_DIR"/scripts/*.sh
 
 cat <<EOF_MESSAGE
 
@@ -96,7 +79,7 @@ Almacenamiento preparado:
   Imagen:  ${CI_STORAGE_IMAGE}
   Montaje: ${CI_STORAGE_ROOT}
   Límite:  ${CI_STORAGE_SIZE}
-  Runners: 2, con datos, workspaces, cachés y Docker CI independientes
+  Runners: 3, con datos, workspaces, cachés y Docker CI independientes
 
 Siguiente paso:
   1. Edite ${ENV_FILE}
