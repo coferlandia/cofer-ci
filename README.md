@@ -1,6 +1,6 @@
 # Coferlandia CI Runner
 
-Servidor self-hosted de GitHub Actions para ejecutar hasta **dos jobs concurrentes** en una VM compartida, sin exponer el Docker productivo del host.
+Servidor self-hosted de GitHub Actions para ejecutar hasta **tres jobs concurrentes** en una VM compartida, sin exponer el Docker productivo del host.
 
 Versión: **0.3.1**
 
@@ -15,65 +15,33 @@ VM Coferlandia
 └── Coferlandia CI
     ├── runner-01 ──TLS── docker-ci-01
     ├── runner-02 ──TLS── docker-ci-02
+    ├── runner-03 ──TLS── docker-ci-03
     ├── filesystem limitado /srv/coferlandia-ci
     └── systemd
         ├── watchdog cada 5 minutos
         └── cleanup diario
 ```
 
-Cada listener acepta un job. GitHub puede ejecutar dos jobs simultáneos, uno en cada runner. Cada runner posee:
+Cada listener acepta un job. GitHub puede ejecutar tres jobs simultáneos, uno en cada runner. Cada runner posee credenciales, workspace, cachés, daemon Docker-in-Docker y red Docker interna independientes.
 
-- credenciales independientes;
-- workspace independiente;
-- cachés independientes;
-- daemon Docker-in-Docker independiente;
-- red Docker interna independiente.
-
-La separación de los daemons es deliberada. Los hooks pueden eliminar contenedores, redes y volúmenes al terminar un job sin afectar el job concurrente del otro runner.
+La separación de los daemons es deliberada. Los hooks pueden eliminar contenedores, redes y volúmenes al terminar un job sin afectar los jobs concurrentes de los otros runners.
 
 ## Controles principales
 
 - Ningún workflow recibe `/var/run/docker.sock` del host.
 - No se publica ningún puerto nuevo.
-- Los dos Docker CI se comunican únicamente por TLS dentro de sus redes privadas.
+- Los tres Docker CI se comunican únicamente por TLS dentro de sus redes privadas.
 - CPU, memoria, PIDs, logs y almacenamiento tienen límites.
 - El filesystem de CI tiene tamaño máximo configurable.
 - Watchdog y limpieza corren fuera de los runners.
-- El stack puede seguir funcionando con un runner ocupado y otro disponible.
+- El stack puede seguir funcionando mientras quede al menos un runner disponible.
 - El watchdog puede distinguir un listener localmente sano de un runner remotamente `offline` y aplicar self-healing seguro cuando el monitoreo GitHub está configurado.
 
-## Instalación limpia
+## Instalación y actualización
 
-La guía principal es:
+La instalación limpia está documentada en [docs/CLEAN_INSTALL.md](docs/CLEAN_INSTALL.md) y la actualización de una instalación existente en [docs/UPGRADE.md](docs/UPGRADE.md).
 
-- [Manual de instalación limpia](docs/CLEAN_INSTALL.md)
-
-Resumen en la VM:
-
-```bash
-cd ~/docker-projects
-unzip ~/uploads/coferlandia-ci-runner-0.3.1.zip
-cd coferlandia-ci-runner
-
-cp .env.example .env
-nano .env
-
-./scripts/check-prerequisites.sh
-./scripts/host-survey.sh before
-sudo ./scripts/install-host.sh
-./scripts/register-runners.sh
-sudo ./scripts/install-systemd.sh
-sudo ./scripts/verify-installation.sh
-./scripts/host-survey.sh after-idle
-```
-
-## Actualización
-
-Para actualizar una instalación existente, especialmente desde 0.2.x o desde un estado mixto de archivos 0.2.x con contenedores 0.3.x, siga:
-
-- [Actualización segura](docs/UPGRADE.md)
-
-No ejecute Compose desde un directorio antiguo si sus servicios no coinciden con la topología activa.
+Antes de habilitar tres jobs pesados simultáneos en una VM compartida, validar capacidad real del host. Con los límites predeterminados, los máximos agregados alcanzan aproximadamente 5,25 CPU y 27 GiB de memoria; son límites, no reservas.
 
 ## Operación habitual
 
@@ -94,7 +62,7 @@ Los workflows no necesitan elegir un runner específico:
 runs-on: [self-hosted, coferlandia-ci]
 ```
 
-Cuando dos jobs compatibles están en cola, GitHub asigna uno a `coferlandia-ci-01` y otro a `coferlandia-ci-02`. Un tercer job permanece en cola hasta que alguno quede libre.
+Cuando tres jobs compatibles están en cola, GitHub puede asignarlos a `coferlandia-ci-01`, `coferlandia-ci-02` y `coferlandia-ci-03`. Un cuarto job permanece en cola hasta que alguno quede libre.
 
 ## Documentación
 
@@ -115,4 +83,4 @@ Cuando dos jobs compatibles están en cola, GitHub asigna uno a `coferlandia-ci-
 
 ## Alcance de confianza
 
-Un workflow puede ejecutar código arbitrario. El aislamiento evita que los jobs controlen el Docker productivo, pero los dos Docker-in-Docker siguen compartiendo el kernel de la VM. Utilice este servidor únicamente con repositorios y workflows confiables.
+Un workflow puede ejecutar código arbitrario. El aislamiento evita que los jobs controlen el Docker productivo, pero los tres Docker-in-Docker siguen compartiendo el kernel de la VM. Utilice este servidor únicamente con repositorios y workflows confiables.
