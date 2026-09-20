@@ -6,26 +6,14 @@ PROJECT_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 ENV_FILE="${PROJECT_DIR}/.env"
 MONITOR_ENV_FILE="/etc/coferlandia-ci-watchdog.env"
 
-RUNNER_SERVICES=(runner-01 runner-02)
-DIND_SERVICES=(docker-ci-01 docker-ci-02)
-ALL_CI_SERVICES=(runner-01 runner-02 docker-ci-01 docker-ci-02)
+RUNNER_SERVICES=(runner-01 runner-02 runner-03)
+DIND_SERVICES=(docker-ci-01 docker-ci-02 docker-ci-03)
+ALL_CI_SERVICES=(runner-01 runner-02 runner-03 docker-ci-01 docker-ci-02 docker-ci-03)
 
-log() {
-  printf '[coferlandia-ci] %s\n' "$*"
-}
-
-warn() {
-  printf '[coferlandia-ci] ADVERTENCIA: %s\n' "$*" >&2
-}
-
-fatal() {
-  printf '[coferlandia-ci] ERROR: %s\n' "$*" >&2
-  exit 1
-}
-
-require_command() {
-  command -v "$1" >/dev/null 2>&1 || fatal "No se encontró el comando requerido: $1"
-}
+log() { printf '[coferlandia-ci] %s\n' "$*"; }
+warn() { printf '[coferlandia-ci] ADVERTENCIA: %s\n' "$*" >&2; }
+fatal() { printf '[coferlandia-ci] ERROR: %s\n' "$*" >&2; exit 1; }
+require_command() { command -v "$1" >/dev/null 2>&1 || fatal "No se encontró el comando requerido: $1"; }
 
 load_env() {
   [[ -f "$ENV_FILE" ]] || fatal "No existe ${ENV_FILE}. Copie .env.example a .env y edítelo."
@@ -44,17 +32,9 @@ load_monitor_env() {
   fi
 }
 
-compose() {
-  docker compose --project-directory "$PROJECT_DIR" --env-file "$ENV_FILE" "$@"
-}
-
-storage_usage_percent() {
-  df --output=pcent "${CI_STORAGE_ROOT}" | tail -n 1 | tr -dc '0-9'
-}
-
-runner_index() {
-  printf '%s' "${1##*-}"
-}
+compose() { docker compose --project-directory "$PROJECT_DIR" --env-file "$ENV_FILE" "$@"; }
+storage_usage_percent() { df --output=pcent "${CI_STORAGE_ROOT}" | tail -n 1 | tr -dc '0-9'; }
+runner_index() { printf '%s' "${1##*-}"; }
 
 runner_name() {
   local index variable
@@ -63,17 +43,9 @@ runner_name() {
   printf '%s' "${!variable:-coferlandia-ci-${index}}"
 }
 
-runner_storage_dir() {
-  printf '%s/runner-%s' "$CI_STORAGE_ROOT" "$(runner_index "$1")"
-}
-
-runner_work_dir() {
-  printf '%s/work-%s' "$CI_STORAGE_ROOT" "$(runner_index "$1")"
-}
-
-runner_cache_dir() {
-  printf '%s/cache-%s' "$CI_STORAGE_ROOT" "$(runner_index "$1")"
-}
+runner_storage_dir() { printf '%s/runner-%s' "$CI_STORAGE_ROOT" "$(runner_index "$1")"; }
+runner_work_dir() { printf '%s/work-%s' "$CI_STORAGE_ROOT" "$(runner_index "$1")"; }
+runner_cache_dir() { printf '%s/cache-%s' "$CI_STORAGE_ROOT" "$(runner_index "$1")"; }
 
 runner_is_busy() {
   local service="${1:-}" cid
@@ -95,7 +67,5 @@ service_health() {
   local service="$1" cid
   cid="$(compose ps -q "$service" 2>/dev/null || true)"
   [[ -n "$cid" ]] || return 1
-  docker inspect \
-    -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}n/a{{end}}' \
-    "$cid" 2>/dev/null
+  docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}n/a{{end}}' "$cid" 2>/dev/null
 }
