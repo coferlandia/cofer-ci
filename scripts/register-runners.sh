@@ -45,9 +45,9 @@ Obtenga un token temporal desde GitHub:
   Organización o repositorio > Settings > Actions > Runners > New self-hosted runner
 
 URL configurada: ${RUNNER_URL}
-Runner 01:       ${RUNNER_01_NAME}
-Runner 02:       ${RUNNER_02_NAME}
-Runner 03:       ${RUNNER_03_NAME}
+Runner 01:       ${RUNNER_01_NAME:-coferlandia-ci-01}
+Runner 02:       ${RUNNER_02_NAME:-coferlandia-ci-02}
+Runner 03:       ${RUNNER_03_NAME:-coferlandia-ci-03}
 Etiquetas:       ${RUNNER_LABELS}
 Grupo:           ${RUNNER_GROUP}
 
