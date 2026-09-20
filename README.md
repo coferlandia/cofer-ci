@@ -41,7 +41,7 @@ La separación de los daemons es deliberada. Los hooks pueden eliminar contenedo
 
 La instalación limpia está documentada en [docs/CLEAN_INSTALL.md](docs/CLEAN_INSTALL.md) y la actualización de una instalación existente en [docs/UPGRADE.md](docs/UPGRADE.md).
 
-Antes de habilitar tres jobs pesados simultáneos en una VM compartida, validar capacidad real del host. Con los límites predeterminados, los máximos agregados alcanzan aproximadamente 5,25 CPU y 27 GiB de memoria; son límites, no reservas.
+Antes de habilitar tres jobs pesados simultáneos en una VM compartida, validar capacidad real del host. Con los límites predeterminados, los máximos agregados alcanzan aproximadamente 3,75 CPU y 27 GiB de memoria; son límites, no reservas.
 
 ## Operación habitual
 
