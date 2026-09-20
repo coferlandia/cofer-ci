@@ -12,9 +12,9 @@ jobs:
     timeout-minutes: 10
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 3
       matrix:
-        slot: [1, 2]
+        slot: [1, 2, 3]
 
     env:
       COMPOSE_PROJECT_NAME: smoke-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.slot }}
