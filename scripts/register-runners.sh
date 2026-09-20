@@ -7,10 +7,8 @@ source "${SCRIPT_DIR}/common.sh"
 load_env
 require_command docker
 
-[[ -d "${CI_STORAGE_ROOT}" ]] || \
-  fatal "No existe ${CI_STORAGE_ROOT}; ejecute sudo scripts/install-host.sh"
-mountpoint -q "${CI_STORAGE_ROOT}" || \
-  fatal "${CI_STORAGE_ROOT} no está montado"
+[[ -d "${CI_STORAGE_ROOT}" ]] ||   fatal "No existe ${CI_STORAGE_ROOT}; ejecute sudo scripts/install-host.sh"
+mountpoint -q "${CI_STORAGE_ROOT}" ||   fatal "${CI_STORAGE_ROOT} no está montado"
 
 wait_healthy() {
   local service="$1" cid status=""
@@ -20,9 +18,7 @@ wait_healthy() {
     cid="$(compose ps -q "$service" 2>/dev/null || true)"
     if [[ -n "$cid" ]]; then
       status="$(
-        docker inspect \
-          -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' \
-          "$cid" 2>/dev/null || true
+        docker inspect           -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}'           "$cid" 2>/dev/null || true
       )"
     fi
 
@@ -41,7 +37,7 @@ for service in "${RUNNER_SERVICES[@]}"; do
 done
 
 if (( ${#missing[@]} == 0 )); then
-  fatal "Los dos runners ya están registrados. Use scripts/status.sh o desregistre primero."
+  fatal "Los tres runners ya están registrados. Use scripts/status.sh o desregistre primero."
 fi
 
 cat <<EOF_MESSAGE
@@ -51,20 +47,22 @@ Obtenga un token temporal desde GitHub:
 URL configurada: ${RUNNER_URL}
 Runner 01:       ${RUNNER_01_NAME}
 Runner 02:       ${RUNNER_02_NAME}
+Runner 03:       ${RUNNER_03_NAME}
 Etiquetas:       ${RUNNER_LABELS}
 Grupo:           ${RUNNER_GROUP}
 
 El token suele poder reutilizarse mientras no venza. El script permite ingresar
-uno distinto para el segundo runner si GitHub lo requiere.
+uno distinto para runners posteriores si GitHub lo requiere.
 EOF_MESSAGE
 
-log "Construyendo una única imagen compartida por ambos listeners"
+log "Construyendo una única imagen compartida por los tres listeners"
 compose build --pull runner-01
 
-log "Iniciando los dos daemons Docker CI para generar certificados TLS"
-compose up -d docker-ci-01 docker-ci-02
-wait_healthy docker-ci-01
-wait_healthy docker-ci-02
+log "Iniciando los tres daemons Docker CI para generar certificados TLS"
+compose up -d docker-ci-01 docker-ci-02 docker-ci-03
+for dind in "${DIND_SERVICES[@]}"; do
+  wait_healthy "$dind"
+done
 
 first_token=""
 for service in "${missing[@]}"; do
@@ -83,15 +81,13 @@ for service in "${missing[@]}"; do
   fi
 
   log "Registrando ${name} mediante ${service}"
-  RUNNER_TOKEN="$token" compose run --rm --no-deps \
-    -e RUNNER_TOKEN="$token" \
-    "$service" register
+  RUNNER_TOKEN="$token" compose run --rm --no-deps     -e RUNNER_TOKEN="$token"     "$service" register
   unset token RUNNER_TOKEN
 done
 unset first_token
 
-log "Iniciando los dos runners persistentes"
-compose up -d runner-01 runner-02
+log "Iniciando los tres runners persistentes"
+compose up -d runner-01 runner-02 runner-03
 
 log "Registro terminado"
 "${SCRIPT_DIR}/status.sh" || true
