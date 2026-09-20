@@ -36,11 +36,7 @@ if [[ -n "${GITHUB_MONITOR_TOKEN:-}" ]]; then
   fi
 
   github_runners_response="$(
-    curl -fsS --max-time 15 \
-      -H 'Accept: application/vnd.github+json' \
-      -H "Authorization: Bearer ${GITHUB_MONITOR_TOKEN}" \
-      -H "X-GitHub-Api-Version: ${GITHUB_API_VERSION:-2026-03-10}" \
-      "$github_runners_api" 2>/dev/null || true
+    curl -fsS --max-time 15       -H 'Accept: application/vnd.github+json'       -H "Authorization: Bearer ${GITHUB_MONITOR_TOKEN}"       -H "X-GitHub-Api-Version: ${GITHUB_API_VERSION:-2026-03-10}"       "$github_runners_api" 2>/dev/null || true
   )"
 fi
 
@@ -48,9 +44,7 @@ github_runner_is_online() {
   local name="$1"
   [[ -n "$github_runners_response" ]] || return 1
   [[ "$(
-    jq -r --arg name "$name" \
-      '.runners[]? | select(.name == $name) | .status' \
-      <<<"$github_runners_response" |
+    jq -r --arg name "$name"       '.runners[]? | select(.name == $name) | .status'       <<<"$github_runners_response" |
       head -n1
   )" == "online" ]]
 }
@@ -58,7 +52,7 @@ github_runner_is_online() {
 check "Docker host responde" docker info
 check "Filesystem CI montado" mountpoint -q "$CI_STORAGE_ROOT"
 
-for index in 01 02; do
+for index in 01 02 03; do
   runner="runner-${index}"
   dind="docker-ci-${index}"
   name="$(runner_name "$runner")"
@@ -67,19 +61,13 @@ for index in 01 02; do
   check "${name} registrado localmente" test -f "$storage/.runner"
   check "Contenedor ${runner} healthy" container_is_healthy "$runner"
   check "${dind} responde" compose exec -T "$dind" docker info
-  check "Docker Compose dentro de ${runner}" \
-    compose exec -T "$runner" docker compose version
-  check "Salida HTTPS de ${runner} hacia GitHub" \
-    compose exec -T "$runner" curl -fsS --max-time 15 https://api.github.com/zen
-  check "Broker de GitHub Actions accesible desde ${runner}" \
-    compose exec -T "$runner" curl -fsS --max-time 15 https://broker.actions.githubusercontent.com/health
-
+  check "Docker Compose dentro de ${runner}" compose exec -T "$runner" docker compose version
+  check "Salida HTTPS de ${runner} hacia GitHub"     compose exec -T "$runner" curl -fsS --max-time 15 https://api.github.com/zen
+  check "Broker de GitHub Actions accesible desde ${runner}"     compose exec -T "$runner" curl -fsS --max-time 15 https://broker.actions.githubusercontent.com/health
 done
 
-check "Timer watchdog habilitado" \
-  systemctl is-enabled --quiet coferlandia-ci-watchdog.timer
-check "Timer cleanup habilitado" \
-  systemctl is-enabled --quiet coferlandia-ci-cleanup.timer
+check "Timer watchdog habilitado" systemctl is-enabled --quiet coferlandia-ci-watchdog.timer
+check "Timer cleanup habilitado" systemctl is-enabled --quiet coferlandia-ci-cleanup.timer
 
 if [[ -n "${GITHUB_MONITOR_TOKEN:-}" ]]; then
   if jq -e '.runners | arrays' <<<"$github_runners_response" >/dev/null 2>&1; then
@@ -95,12 +83,11 @@ else
   printf 'SKIP  Estado remoto en GitHub: GITHUB_MONITOR_TOKEN no disponible\n'
 fi
 
-check "Salida HTTPS del host hacia Telegram" \
-  curl -sS -o /dev/null --max-time 15 https://api.telegram.org
+check "Salida HTTPS del host hacia Telegram"   curl -sS -o /dev/null --max-time 15 https://api.telegram.org
 
 if (( failures > 0 )); then
   printf '\nFallaron %s comprobaciones.\n' "$failures"
   exit 1
 fi
 
-printf '\nInstalación de dos runners verificada localmente y en los controles remotos disponibles.\n'
+printf '\nInstalación de tres runners verificada localmente y en los controles remotos disponibles.\n'

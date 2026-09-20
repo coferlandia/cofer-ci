@@ -75,12 +75,10 @@ services:
       - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/docker-01:/var/lib/docker
       - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/certs-01:/certs
       - ./config/docker-daemon.json:/etc/docker/daemon.json:ro
-    expose:
-      - "2376"
+    expose: ["2376"]
     networks:
       ci-network-01:
-        aliases:
-          - docker
+        aliases: [docker]
 
   runner-01:
     <<: *runner-common
@@ -109,8 +107,7 @@ services:
       - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/cache-01:/cache
       - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/certs-01/client:/certs/client:ro
       - ./hooks:/opt/runner-hooks:ro
-    networks:
-      - ci-network-01
+    networks: [ci-network-01]
 
   docker-ci-02:
     <<: *docker-ci-common
@@ -119,12 +116,10 @@ services:
       - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/docker-02:/var/lib/docker
       - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/certs-02:/certs
       - ./config/docker-daemon.json:/etc/docker/daemon.json:ro
-    expose:
-      - "2376"
+    expose: ["2376"]
     networks:
       ci-network-02:
-        aliases:
-          - docker
+        aliases: [docker]
 
   runner-02:
     <<: *runner-common
@@ -153,8 +148,48 @@ services:
       - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/cache-02:/cache
       - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/certs-02/client:/certs/client:ro
       - ./hooks:/opt/runner-hooks:ro
+    networks: [ci-network-02]
+
+  docker-ci-03:
+    <<: *docker-ci-common
+    container_name: ${COMPOSE_PROJECT_NAME:-coferlandia-ci}-docker-03
+    volumes:
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/docker-03:/var/lib/docker
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/certs-03:/certs
+      - ./config/docker-daemon.json:/etc/docker/daemon.json:ro
+    expose: ["2376"]
     networks:
-      - ci-network-02
+      ci-network-03:
+        aliases: [docker]
+
+  runner-03:
+    <<: *runner-common
+    container_name: ${COMPOSE_PROJECT_NAME:-coferlandia-ci}-runner-03
+    depends_on:
+      docker-ci-03:
+        condition: service_healthy
+    environment:
+      RUNNER_URL: ${RUNNER_URL}
+      RUNNER_NAME: ${RUNNER_03_NAME:-coferlandia-ci-03}
+      RUNNER_LABELS: ${RUNNER_LABELS:-coferlandia-ci,docker}
+      RUNNER_GROUP: ${RUNNER_GROUP:-Default}
+      RUNNER_WORKDIR: ${RUNNER_WORKDIR:-_work}
+      DOCKER_HOST: tcp://docker:2376
+      DOCKER_TLS_VERIFY: "1"
+      DOCKER_CERT_PATH: /certs/client
+      ACTIONS_RUNNER_HOOK_JOB_STARTED: /opt/runner-hooks/pre-job.sh
+      ACTIONS_RUNNER_HOOK_JOB_COMPLETED: /opt/runner-hooks/post-job.sh
+      RUNNER_TOOL_CACHE: /cache/toolcache
+      NUGET_PACKAGES: /cache/nuget
+      npm_config_cache: /cache/npm
+      PIP_CACHE_DIR: /cache/pip
+    volumes:
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/runner-03:/opt/actions-runner
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/work-03:/opt/actions-runner/_work
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/cache-03:/cache
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/certs-03/client:/certs/client:ro
+      - ./hooks:/opt/runner-hooks:ro
+    networks: [ci-network-03]
 
 networks:
   ci-network-01:
@@ -162,4 +197,7 @@ networks:
     driver: bridge
   ci-network-02:
     name: ${COMPOSE_PROJECT_NAME:-coferlandia-ci}-network-02
+    driver: bridge
+  ci-network-03:
+    name: ${COMPOSE_PROJECT_NAME:-coferlandia-ci}-network-03
     driver: bridge

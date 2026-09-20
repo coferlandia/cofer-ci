@@ -11,13 +11,9 @@ mountpoint -q "${CI_STORAGE_ROOT}" || fatal "${CI_STORAGE_ROOT} no está montado
 usage_before="$(storage_usage_percent)"
 log "Limpieza iniciada. Uso=${usage_before}%"
 
-# Sólo elimina imágenes antiguas etiquetadas como parte de este proyecto.
-docker image prune -af \
-  --filter 'label=io.coferlandia.ci=true' \
-  --filter "until=${IMAGE_RETENTION_HOURS:-168}h" \
-  >/dev/null 2>&1 || true
+docker image prune -af   --filter 'label=io.coferlandia.ci=true'   --filter "until=${IMAGE_RETENTION_HOURS:-168}h"   >/dev/null 2>&1 || true
 
-for index in 01 02; do
+for index in 01 02 03; do
   runner="runner-${index}"
   dind="docker-ci-${index}"
   cache="${CI_STORAGE_ROOT}/cache-${index}"
@@ -28,45 +24,26 @@ for index in 01 02; do
 
   log "${runner}: busy=${busy}"
 
-  # Cada daemon pertenece exclusivamente a un runner. Estas podas no pueden
-  # afectar el job concurrente del otro runner.
   compose exec -T "$dind" docker container prune -f >/dev/null 2>&1 || true
   compose exec -T "$dind" docker network prune -f >/dev/null 2>&1 || true
   compose exec -T "$dind" docker volume prune -f >/dev/null 2>&1 || true
-  compose exec -T "$dind" docker image prune -af \
-    --filter "until=${IMAGE_RETENTION_HOURS:-168}h" \
-    >/dev/null 2>&1 || true
-  compose exec -T "$dind" docker builder prune -af \
-    --keep-storage "${BUILDKIT_CACHE_KEEP:-4GB}" \
-    >/dev/null 2>&1 || true
-  compose exec -T "$dind" docker buildx prune -af \
-    --max-used-space "${BUILDKIT_CACHE_KEEP:-4GB}" \
-    >/dev/null 2>&1 || true
+  compose exec -T "$dind" docker image prune -af     --filter "until=${IMAGE_RETENTION_HOURS:-168}h"     >/dev/null 2>&1 || true
+  compose exec -T "$dind" docker builder prune -af     --keep-storage "${BUILDKIT_CACHE_KEEP:-4GB}"     >/dev/null 2>&1 || true
+  compose exec -T "$dind" docker buildx prune -af     --max-used-space "${BUILDKIT_CACHE_KEEP:-4GB}"     >/dev/null 2>&1 || true
 
   if [[ "$busy" == false ]]; then
-    find "$cache" -type f \
-      -mtime "+${PACKAGE_CACHE_RETENTION_DAYS:-30}" \
-      -delete 2>/dev/null || true
+    find "$cache" -type f       -mtime "+${PACKAGE_CACHE_RETENTION_DAYS:-30}"       -delete 2>/dev/null || true
   fi
 
   usage="$(storage_usage_percent)"
   if (( usage >= ${DISK_AGGRESSIVE_PERCENT:-82} )) && [[ "$busy" == false ]]; then
     log "${runner}: umbral agresivo (${usage}%). Reduciendo cachés y workspace."
 
-    compose exec -T "$dind" docker image prune -af \
-      --filter 'until=24h' >/dev/null 2>&1 || true
-    compose exec -T "$dind" docker builder prune -af \
-      --keep-storage "${BUILDKIT_CACHE_EMERGENCY_KEEP:-1GB}" \
-      >/dev/null 2>&1 || true
-    compose exec -T "$dind" docker buildx prune -af \
-      --max-used-space "${BUILDKIT_CACHE_EMERGENCY_KEEP:-1GB}" \
-      >/dev/null 2>&1 || true
+    compose exec -T "$dind" docker image prune -af       --filter 'until=24h' >/dev/null 2>&1 || true
+    compose exec -T "$dind" docker builder prune -af       --keep-storage "${BUILDKIT_CACHE_EMERGENCY_KEEP:-1GB}"       >/dev/null 2>&1 || true
+    compose exec -T "$dind" docker buildx prune -af       --max-used-space "${BUILDKIT_CACHE_EMERGENCY_KEEP:-1GB}"       >/dev/null 2>&1 || true
 
-    find "$work" \
-      -mindepth 1 -maxdepth 1 \
-      ! -name '_actions' ! -name '_tool' ! -name '_temp' \
-      -mtime "+${WORKSPACE_RETENTION_DAYS:-7}" \
-      -exec rm -rf -- {} + 2>/dev/null || true
+    find "$work"       -mindepth 1 -maxdepth 1       ! -name '_actions' ! -name '_tool' ! -name '_temp'       -mtime "+${WORKSPACE_RETENTION_DAYS:-7}"       -exec rm -rf -- {} + 2>/dev/null || true
 
     find "$cache" -type f -mtime +7 -delete 2>/dev/null || true
   fi

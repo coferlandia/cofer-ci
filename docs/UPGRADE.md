@@ -1,6 +1,6 @@
 # Actualización de una instalación existente
 
-Este procedimiento cubre una actualización desde 0.2.x, 0.3.0 o un estado mixto en el que los contenedores activos pertenecen a la topología de dos runners pero el directorio operativo conserva archivos antiguos.
+Este procedimiento cubre una actualización desde 0.2.x/0.3.x y, en particular, la migración desde la topología de dos runners a la topología 0.4.x de tres runners.
 
 ## Objetivo
 
@@ -29,6 +29,7 @@ También puede comprobar workers locales de la topología 0.3.x:
 ```bash
 docker exec coferlandia-ci-runner-01 pgrep -af 'Runner.Worker' || true
 docker exec coferlandia-ci-runner-02 pgrep -af 'Runner.Worker' || true
+docker exec coferlandia-ci-runner-03 pgrep -af 'Runner.Worker' || true
 ```
 
 ## 2. Diagnosticar el estado instalado antes de usar Compose
@@ -106,6 +107,8 @@ docker-ci-01
 runner-01
 docker-ci-02
 runner-02
+docker-ci-03
+runner-03
 ```
 
 ## 5. Recuperar y revisar `.env`
@@ -122,9 +125,12 @@ Revise que existan o queden correctamente resueltos:
 RUNNER_URL=https://github.com/coferlandia
 RUNNER_01_NAME=coferlandia-ci-01
 RUNNER_02_NAME=coferlandia-ci-02
+RUNNER_03_NAME=coferlandia-ci-03
 RUNNER_LABELS=coferlandia-ci,docker
 RUNNER_GROUP=Default
 CI_STORAGE_ROOT=/srv/coferlandia-ci
+CI_STORAGE_SIZE=45G
+DIND_CPUS=0.75
 ```
 
 No copie tokens de registro temporales a `.env`.
@@ -146,7 +152,7 @@ Compruebe primero qué contenedores existen:
 docker compose ps -a
 ```
 
-Si los cuatro servicios ya corresponden al proyecto y los runners están registrados en `/srv/coferlandia-ci/runner-01` y `/srv/coferlandia-ci/runner-02`, aplique el Compose nuevo sin borrar almacenamiento:
+Si la instalación existente tiene 01/02 registrados, primero amplíe el filesystem CI si corresponde, ejecute `sudo ./scripts/install-host.sh` para crear la estructura 03 y luego registre sólo el runner faltante con `./scripts/register-runners.sh`. Después reconcilie el stack sin borrar almacenamiento:
 
 ```bash
 docker compose up -d --build
@@ -218,7 +224,7 @@ gh api /orgs/coferlandia/actions/runners \
   --jq '.runners[] | select(.name | startswith("coferlandia-ci")) | "\(.name) status=\(.status) busy=\(.busy) labels=\([.labels[].name] | join(","))"'
 ```
 
-Ambos runners deben aparecer `online` y, sin jobs activos, `busy=false`.
+Los tres runners deben aparecer `online` y, sin jobs activos, `busy=false`.
 
 ## 10. Prueba de reboot
 
@@ -236,7 +242,7 @@ sudo ./scripts/status.sh
 sudo ./scripts/verify-installation.sh
 ```
 
-Los dos runners deben regresar `online/Idle` sin re-registro manual.
+Los tres runners deben regresar `online/Idle` sin re-registro manual.
 
 ## 11. Rollback
 
@@ -254,9 +260,9 @@ No restaure una versión cuyo `compose.yml` describa `runner`/`docker-ci` único
 La actualización queda cerrada cuando:
 
 - el directorio operativo y `VERSION` corresponden a la misma versión;
-- `docker compose config --services` muestra los cuatro servicios;
-- los cuatro contenedores están healthy;
-- ambos runners están `online` en GitHub;
+- `docker compose config --services` muestra los seis servicios;
+- los seis contenedores están healthy;
+- los tres runners están `online` en GitHub;
 - watchdog y cleanup están habilitados;
 - el watchdog tiene monitoreo remoto configurado;
 - un reboot completo recupera ambos runners sin intervención manual.

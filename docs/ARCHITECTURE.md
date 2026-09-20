@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-La versión 0.3.0 permite ejecutar dos jobs simultáneos sin permitir que un job interfiera con el ambiente Docker del otro ni con los contenedores productivos del host.
+La topología actual permite ejecutar tres jobs simultáneos sin permitir que un job interfiera con el ambiente Docker de los otros ni con los contenedores productivos del host.
 
 ## Componentes
 
@@ -12,6 +12,8 @@ La versión 0.3.0 permite ejecutar dos jobs simultáneos sin permitir que un job
 | `docker-ci-01` | Docker exclusivo del runner 1 | `docker-01`, `certs-01` |
 | `runner-02` | Listener GitHub Actions 2 | `runner-02`, `work-02`, `cache-02` |
 | `docker-ci-02` | Docker exclusivo del runner 2 | `docker-02`, `certs-02` |
+| `runner-03` | Listener GitHub Actions 3 | `runner-03`, `work-03`, `cache-03` |
+| `docker-ci-03` | Docker exclusivo del runner 3 | `docker-03`, `certs-03` |
 | filesystem CI | Techo de almacenamiento común | `/srv/coferlandia-ci` |
 | watchdog | Salud, disco y alertas | systemd/journald |
 | cleanup | Retención y recuperación | systemd/journald |
@@ -27,16 +29,16 @@ docker network prune
 docker volume prune
 ```
 
-Además, los hooks defensivos eliminan recursos residuales antes y después de cada job. En un daemon compartido, un job podría borrar contenedores, redes o volúmenes utilizados por el otro.
+Además, los hooks defensivos eliminan recursos residuales antes y después de cada job. En un daemon compartido, un job podría borrar contenedores, redes o volúmenes utilizados por otro.
 
 Docker Engine no ofrece namespaces independientes por cliente. Por ese motivo, la frontera segura y simple es un daemon por runner.
 
 ## Concurrencia efectiva
 
 - Cada `Runner.Listener` ejecuta un solo job.
-- Existen dos listeners.
-- Capacidad máxima: dos jobs simultáneos.
-- Un tercer job compatible queda en cola.
+- Existen tres listeners.
+- Capacidad máxima: tres jobs simultáneos.
+- Un cuarto job compatible queda en cola.
 - Dentro de cada job pueden ejecutarse múltiples procesos y contenedores.
 
 ## Aislamiento
@@ -44,9 +46,10 @@ Docker Engine no ofrece namespaces independientes por cliente. Por ese motivo, l
 ```text
 runner-01 → red-01 → docker-ci-01
 runner-02 → red-02 → docker-ci-02
+runner-03 → red-03 → docker-ci-03
 ```
 
-No existe conectividad necesaria entre ambos pares. Ninguno monta el socket Docker del host.
+No existe conectividad necesaria entre los pares. Ninguno monta el socket Docker del host.
 
 ## Recursos predeterminados
 
@@ -55,42 +58,47 @@ Por instancia:
 ```env
 RUNNER_CPUS=0.50
 RUNNER_MEMORY=5g
-DIND_CPUS=1.25
+DIND_CPUS=0.75
 DIND_MEMORY=4g
 DIND_PIDS_LIMIT=1024
 DIND_SHM_SIZE=512m
 ```
 
-Máximo agregado aproximado del stack, considerando los límites de memoria y CPU de los cuatro contenedores:
+Máximo agregado aproximado del stack, considerando los límites de memoria y CPU de los seis contenedores:
 
-- CPU: 3,5 CPU lógicas;
-- memoria: 18 GiB;
-- almacenamiento: 30 GiB compartidos como techo.
+- CPU: 3,75 CPU lógicas;
+- memoria: 27 GiB;
+- almacenamiento: 45 GiB compartidos como techo en instalaciones nuevas.
 
-Los límites son máximos, no reservas. La línea base de 5 GiB por runner se adoptó después de observar un OOM real de cgroup durante una suite backend completa ejecutada directamente en el listener. Para una VM con otras cargas, conserve margen para el sistema operativo y el stack productivo, y ajuste con evidencia de `docker stats`, `memory.events` y relevamientos del host.
+Los límites son máximos, no reservas. Antes de habilitar tres jobs pesados simultáneos en una VM compartida, validar capacidad real del host y conservar margen para el sistema operativo y el stack productivo.
 
 ## Datos persistentes
 
 ```text
 /srv/coferlandia-ci/
-├── runner-01/       credenciales y distribución del runner 1
-├── runner-02/       credenciales y distribución del runner 2
-├── work-01/         checkouts y temporales del runner 1
-├── work-02/         checkouts y temporales del runner 2
-├── cache-01/        NuGet/npm/pip/toolcache del runner 1
-├── cache-02/        NuGet/npm/pip/toolcache del runner 2
-├── docker-01/       datos del Docker CI 1
-├── docker-02/       datos del Docker CI 2
-├── certs-01/        TLS del par 1
-└── certs-02/        TLS del par 2
+├── runner-01/
+├── runner-02/
+├── runner-03/
+├── work-01/
+├── work-02/
+├── work-03/
+├── cache-01/
+├── cache-02/
+├── cache-03/
+├── docker-01/
+├── docker-02/
+├── docker-03/
+├── certs-01/
+├── certs-02/
+└── certs-03/
 ```
 
 ## Programación en GitHub
 
-Ambos runners usan las mismas etiquetas personalizadas. GitHub decide cuál está disponible:
+Los tres runners usan las mismas etiquetas personalizadas. GitHub decide cuál está disponible:
 
 ```yaml
 runs-on: [self-hosted, coferlandia-ci]
 ```
 
-No codifique `coferlandia-ci-01` o `coferlandia-ci-02` en los workflows salvo que exista una necesidad diagnóstica excepcional.
+No codifique un runner individual en los workflows salvo que exista una necesidad diagnóstica excepcional.

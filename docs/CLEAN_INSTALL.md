@@ -6,10 +6,10 @@ Este procedimiento parte de una VM sin una instalación previa de Coferlandia CI
 
 Al finalizar existirán:
 
-- dos runners GitHub Actions: `coferlandia-ci-01` y `coferlandia-ci-02`;
-- dos Docker-in-Docker independientes;
-- capacidad para dos jobs simultáneos;
-- filesystem CI limitado a 30 GiB por defecto;
+- tres runners GitHub Actions: `coferlandia-ci-01`, `coferlandia-ci-02` y `coferlandia-ci-03`;
+- tres Docker-in-Docker independientes;
+- capacidad para tres jobs simultáneos;
+- filesystem CI limitado a 45 GiB por defecto;
 - watchdog cada cinco minutos;
 - limpieza diaria;
 - ningún puerto entrante adicional.
@@ -20,7 +20,7 @@ Al finalizar existirán:
 - arquitectura `x86_64` o `aarch64/arm64`;
 - Docker Engine y `docker compose` funcionando;
 - usuario operativo con acceso a Docker y capacidad de usar `sudo`;
-- al menos 35 GiB disponibles si se usa `CI_STORAGE_SIZE=30G`;
+- al menos 50 GiB disponibles si se usa `CI_STORAGE_SIZE=45G`;
 - salida HTTPS por TCP 443;
 - permisos de administrador para registrar runners en la organización o repositorio de GitHub.
 
@@ -30,7 +30,7 @@ Configuración recomendada para la VM compartida utilizada durante el diseño:
 - 24 GiB de RAM o más;
 - 60 GiB libres o más antes de instalar.
 
-La línea base permite hasta 18 GiB de memoria agregada entre runners y Docker-in-Docker. Los límites son máximos, no reservas; una VM menor puede funcionar con cargas livianas, pero debe ajustar recursos o concurrencia antes de ejecutar dos validaciones completas simultáneas.
+La línea base permite hasta 27 GiB de memoria agregada entre runners y Docker-in-Docker. Los límites son máximos, no reservas; en una VM compartida de 24 GiB debe conservarse margen para producción y validar el consumo real antes de sostener tres validaciones pesadas simultáneas.
 
 ## 3. Transferir el paquete desde Windows/Git Bash
 
@@ -40,8 +40,8 @@ En la computadora local:
 cd ~/Documents/dev/coferlandia/cofer-ci
 
 scp \
-  coferlandia-ci-runner-0.3.1.zip \
-  coferlandia-ci-runner-0.3.1.zip.sha256 \
+  coferlandia-ci-runner-0.4.0.zip \
+  coferlandia-ci-runner-0.4.0.zip.sha256 \
   coferlandia:~/uploads/
 ```
 
@@ -55,13 +55,13 @@ Verificar integridad:
 
 ```bash
 cd ~/uploads
-sha256sum -c coferlandia-ci-runner-0.3.1.zip.sha256
+sha256sum -c coferlandia-ci-runner-0.4.0.zip.sha256
 ```
 
 Resultado esperado:
 
 ```text
-coferlandia-ci-runner-0.3.1.zip: OK
+coferlandia-ci-runner-0.4.0.zip: OK
 ```
 
 ## 4. Instalar utilidades base
@@ -96,7 +96,7 @@ mkdir -p ~/docker-projects
 cd ~/docker-projects
 
 rm -rf coferlandia-ci-runner
-unzip ~/uploads/coferlandia-ci-runner-0.3.1.zip
+unzip ~/uploads/coferlandia-ci-runner-0.4.0.zip
 cd coferlandia-ci-runner
 ```
 
@@ -108,7 +108,7 @@ pwd
 find . -maxdepth 2 -type f | sort
 ```
 
-`VERSION` debe mostrar `0.3.1`.
+`VERSION` debe mostrar `0.4.0`.
 
 ## 6. Crear y revisar `.env`
 
@@ -123,9 +123,10 @@ Configuración organizacional típica:
 RUNNER_URL=https://github.com/coferlandia
 RUNNER_01_NAME=coferlandia-ci-01
 RUNNER_02_NAME=coferlandia-ci-02
+RUNNER_03_NAME=coferlandia-ci-03
 RUNNER_LABELS=coferlandia-ci,docker
 RUNNER_GROUP=Default
-CI_STORAGE_SIZE=30G
+CI_STORAGE_SIZE=45G
 ```
 
 Límites recomendados actuales:
@@ -135,7 +136,7 @@ RUNNER_CPUS=0.50
 RUNNER_MEMORY=5g
 RUNNER_MEMORY_RESERVATION=512m
 RUNNER_PIDS_LIMIT=256
-DIND_CPUS=1.25
+DIND_CPUS=0.75
 DIND_MEMORY=4g
 DIND_MEMORY_RESERVATION=512m
 DIND_PIDS_LIMIT=1024
@@ -176,7 +177,7 @@ df -h / /srv/coferlandia-ci
 sudo find /srv/coferlandia-ci -maxdepth 2 -printf '%M %u:%g %p\n'
 ```
 
-Deben existir directorios separados para los índices `01` y `02`.
+Deben existir directorios separados para los índices `01`, `02` y `03`.
 
 ## 9. Crear los runners en GitHub
 
@@ -190,7 +191,7 @@ Seleccionar Linux y la arquitectura de la VM. El comando mostrado debe contener 
 
 Para un repositorio, el token debe obtenerse desde la configuración de ese repositorio y `RUNNER_URL` debe incluir `OWNER/REPOSITORY`.
 
-## 10. Registrar ambos runners
+## 10. Registrar los tres runners
 
 ```bash
 ./scripts/register-runners.sh
@@ -199,13 +200,12 @@ Para un repositorio, el token debe obtenerse desde la configuración de ese repo
 El script:
 
 1. construye una sola imagen de runner;
-2. inicia `docker-ci-01` y `docker-ci-02`;
+2. inicia `docker-ci-01`, `docker-ci-02` y `docker-ci-03`;
 3. espera sus certificados TLS;
-4. registra el primer runner;
-5. registra el segundo runner;
-6. inicia ambos listeners persistentes.
+4. registra únicamente los runners que aún no tengan `.runner` persistente;
+5. inicia los tres listeners persistentes.
 
-Puede reutilizar el primer token para el segundo mientras siga vigente. El script también permite pegar un token diferente.
+Puede reutilizar el primer token para los siguientes mientras siga vigente. El script también permite pegar tokens diferentes.
 
 Éxito esperado:
 
@@ -223,9 +223,10 @@ Verificar:
 docker compose ps
 docker compose logs --tail=100 runner-01
 docker compose logs --tail=100 runner-02
+docker compose logs --tail=100 runner-03
 ```
 
-Los cuatro contenedores deben quedar `healthy`.
+Los seis contenedores deben quedar `healthy`.
 
 ## 11. Confirmar en GitHub
 
@@ -234,6 +235,7 @@ En la pantalla de runners deben aparecer:
 ```text
 coferlandia-ci-01  Idle
 coferlandia-ci-02  Idle
+coferlandia-ci-03  Idle
 ```
 
 Con las etiquetas personalizadas:
@@ -271,7 +273,7 @@ sudo systemctl status coferlandia-ci-watchdog.service --no-pager
 sudo ./scripts/verify-installation.sh
 ```
 
-Debe validar los dos registros, los cuatro contenedores, ambos Docker CI, Docker Compose, salida HTTPS, broker de Actions, timers systemd y, cuando el token de monitoreo esté configurado, que GitHub reporte ambos runners `online`.
+Debe validar los tres registros, los seis contenedores, los tres Docker CI, Docker Compose, salida HTTPS, broker de Actions, timers systemd y, cuando el token de monitoreo esté configurado, que GitHub reporte los tres runners `online`.
 
 ## 14. Smoke test paralelo
 
@@ -285,12 +287,12 @@ cp examples/workflows/runner-smoke-test.yml \
 
 Commit, push y ejecutar manualmente desde GitHub Actions.
 
-El workflow crea dos jobs de una matriz con `max-parallel: 2`. En GitHub deben observarse ejecutándose al mismo tiempo, uno por runner.
+El workflow crea tres jobs de una matriz con `max-parallel: 3`. En GitHub deben observarse ejecutándose al mismo tiempo, uno por runner.
 
 Durante la prueba:
 
 ```bash
-docker compose logs -f runner-01 runner-02
+docker compose logs -f runner-01 runner-02 runner-03
 ```
 
 Después:
@@ -307,10 +309,10 @@ df -h /srv/coferlandia-ci
 ls -lht reports/host-surveys/
 ```
 
-Para medir durante dos jobs simultáneos:
+Para medir durante tres jobs simultáneos:
 
 ```bash
-./scripts/host-survey.sh during-two-jobs
+./scripts/host-survey.sh during-three-jobs
 ```
 
 ## 16. Prueba de reinicio
@@ -334,9 +336,9 @@ Los runners deben volver a `Idle` sin registrarlos nuevamente.
 
 La instalación está terminada cuando:
 
-- los cuatro contenedores están `healthy`;
-- GitHub muestra dos runners `Idle`;
-- el smoke test ejecuta dos jobs simultáneos;
+- los seis contenedores están `healthy`;
+- GitHub muestra tres runners `Idle`;
+- el smoke test ejecuta tres jobs simultáneos;
 - cada Docker CI muestra únicamente sus propios recursos;
 - `/srv/coferlandia-ci` está montado;
 - los timers están habilitados;
