@@ -58,7 +58,7 @@ Por instancia:
 ```env
 RUNNER_CPUS=0.50
 RUNNER_MEMORY=5g
-DIND_CPUS=1.25
+DIND_CPUS=0.75
 DIND_MEMORY=4g
 DIND_PIDS_LIMIT=1024
 DIND_SHM_SIZE=512m
@@ -66,7 +66,7 @@ DIND_SHM_SIZE=512m
 
 Máximo agregado aproximado del stack, considerando los límites de memoria y CPU de los seis contenedores:
 
-- CPU: 5,25 CPU lógicas;
+- CPU: 3,75 CPU lógicas;
 - memoria: 27 GiB;
 - almacenamiento: 45 GiB compartidos como techo en instalaciones nuevas.
 
