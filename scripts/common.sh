@@ -6,9 +6,11 @@ PROJECT_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 ENV_FILE="${PROJECT_DIR}/.env"
 MONITOR_ENV_FILE="/etc/coferlandia-ci-watchdog.env"
 
-RUNNER_SERVICES=(runner-01 runner-02 runner-03)
+RUNNER_SERVICES=(runner-01 runner-02 runner-03 runner-04)
+HEAVY_RUNNER_SERVICES=(runner-01 runner-02 runner-03)
+GATE_RUNNER_SERVICE=runner-04
 DIND_SERVICES=(docker-ci-01 docker-ci-02 docker-ci-03)
-ALL_CI_SERVICES=(runner-01 runner-02 runner-03 docker-ci-01 docker-ci-02 docker-ci-03)
+ALL_CI_SERVICES=(runner-01 runner-02 runner-03 runner-04 docker-ci-01 docker-ci-02 docker-ci-03)
 
 log() { printf '[coferlandia-ci] %s\n' "$*"; }
 warn() { printf '[coferlandia-ci] ADVERTENCIA: %s\n' "$*" >&2; }
