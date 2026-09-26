@@ -1,6 +1,6 @@
 # Actualización de una instalación existente
 
-Este procedimiento cubre una actualización desde 0.2.x/0.3.x y, en particular, la migración desde la topología de dos runners a la topología 0.4.x de tres runners.
+Este procedimiento cubre una actualización desde 0.2.x/0.3.x y, en particular, la migración hacia la topología con tres runners pesados más una lane liviana dedicada al Gate.
 
 ## Objetivo
 
@@ -109,6 +109,7 @@ docker-ci-02
 runner-02
 docker-ci-03
 runner-03
+runner-04
 ```
 
 ## 5. Recuperar y revisar `.env`
@@ -126,7 +127,9 @@ RUNNER_URL=https://github.com/coferlandia
 RUNNER_01_NAME=coferlandia-ci-01
 RUNNER_02_NAME=coferlandia-ci-02
 RUNNER_03_NAME=coferlandia-ci-03
+RUNNER_04_NAME=coferlandia-ci-gate-01
 RUNNER_LABELS=coferlandia-ci,docker
+RUNNER_04_LABELS=coferlandia-ci-gate
 RUNNER_GROUP=Default
 CI_STORAGE_ROOT=/srv/coferlandia-ci
 CI_STORAGE_SIZE=45G
@@ -224,7 +227,7 @@ gh api /orgs/coferlandia/actions/runners \
   --jq '.runners[] | select(.name | startswith("coferlandia-ci")) | "\(.name) status=\(.status) busy=\(.busy) labels=\([.labels[].name] | join(","))"'
 ```
 
-Los tres runners deben aparecer `online` y, sin jobs activos, `busy=false`.
+Los tres runners pesados y `coferlandia-ci-gate-01` deben aparecer `online` y, sin jobs activos, `busy=false`.
 
 ## 10. Prueba de reboot
 
