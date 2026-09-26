@@ -62,7 +62,7 @@ if ! mountpoint -q "$CI_STORAGE_ROOT"; then
   mount "$CI_STORAGE_ROOT"
 fi
 
-for index in 01 02 03; do
+for index in 01 02 03 04; do
   mkdir -p     "$CI_STORAGE_ROOT/runner-${index}"     "$CI_STORAGE_ROOT/work-${index}"     "$CI_STORAGE_ROOT/cache-${index}/toolcache"     "$CI_STORAGE_ROOT/cache-${index}/nuget"     "$CI_STORAGE_ROOT/cache-${index}/npm"     "$CI_STORAGE_ROOT/cache-${index}/pip"     "$CI_STORAGE_ROOT/docker-${index}"     "$CI_STORAGE_ROOT/certs-${index}"
 
   chown -R 1001:123     "$CI_STORAGE_ROOT/runner-${index}"     "$CI_STORAGE_ROOT/work-${index}"     "$CI_STORAGE_ROOT/cache-${index}"
@@ -79,7 +79,7 @@ Almacenamiento preparado:
   Imagen:  ${CI_STORAGE_IMAGE}
   Montaje: ${CI_STORAGE_ROOT}
   Límite:  ${CI_STORAGE_SIZE}
-  Runners: 3, con datos, workspaces, cachés y Docker CI independientes
+  Runners: 3 pesados con Docker CI + 1 Gate liviano sin DinD
 
 Siguiente paso:
   1. Edite ${ENV_FILE}
