@@ -41,7 +41,7 @@ else
   ok "Sin puertos publicados"
 fi
 
-for service in runner-01 runner-02 docker-ci-01 docker-ci-02; do
+for service in runner-01 runner-02 runner-03 runner-04 docker-ci-01 docker-ci-02 docker-ci-03; do
   grep -q "^  ${service}:" compose.yml && ok "Servicio ${service}" || fail "Servicio ${service}"
 done
 
@@ -68,3 +68,11 @@ if (( failures > 0 )); then
 fi
 
 printf '\nPaquete validado.\n'
+
+grep -q 'RUNNER_LABELS: ${RUNNER_04_LABELS:-coferlandia-ci-gate}' compose.yml &&
+  ok "Runner Gate usa label exclusiva" || fail "Runner Gate debe usar coferlandia-ci-gate"
+if awk '/^  runner-04:/{flag=1;next}/^  [a-zA-Z0-9_-]+:/{if(flag) exit}flag' compose.yml | grep -q 'DOCKER_HOST'; then
+  fail "Runner Gate no debe recibir Docker-in-Docker"
+else
+  ok "Runner Gate sin Docker-in-Docker"
+fi
