@@ -37,7 +37,7 @@ for service in "${RUNNER_SERVICES[@]}"; do
 done
 
 if (( ${#missing[@]} == 0 )); then
-  fatal "Los tres runners ya están registrados. Use scripts/status.sh o desregistre primero."
+  fatal "Los cuatro runners ya están registrados. Use scripts/status.sh o desregistre primero."
 fi
 
 cat <<EOF_MESSAGE
@@ -48,14 +48,16 @@ URL configurada: ${RUNNER_URL}
 Runner 01:       ${RUNNER_01_NAME:-coferlandia-ci-01}
 Runner 02:       ${RUNNER_02_NAME:-coferlandia-ci-02}
 Runner 03:       ${RUNNER_03_NAME:-coferlandia-ci-03}
-Etiquetas:       ${RUNNER_LABELS}
+Runner Gate:     ${RUNNER_04_NAME:-coferlandia-ci-gate-01}
+Etiquetas heavy:${RUNNER_LABELS}
+Etiqueta Gate:  ${RUNNER_04_LABELS:-coferlandia-ci-gate}
 Grupo:           ${RUNNER_GROUP}
 
 El token suele poder reutilizarse mientras no venza. El script permite ingresar
 uno distinto para runners posteriores si GitHub lo requiere.
 EOF_MESSAGE
 
-log "Construyendo una única imagen compartida por los tres listeners"
+log "Construyendo una única imagen compartida por los cuatro listeners"
 compose build --pull runner-01
 
 log "Iniciando los tres daemons Docker CI para generar certificados TLS"
@@ -86,8 +88,8 @@ for service in "${missing[@]}"; do
 done
 unset first_token
 
-log "Iniciando los tres runners persistentes"
-compose up -d runner-01 runner-02 runner-03
+log "Iniciando los tres runners pesados y la lane liviana de Gate"
+compose up -d runner-01 runner-02 runner-03 runner-04
 
 log "Registro terminado"
 "${SCRIPT_DIR}/status.sh" || true
