@@ -66,6 +66,15 @@ for index in 01 02 03; do
   check "Broker de GitHub Actions accesible desde ${runner}"     compose exec -T "$runner" curl -fsS --max-time 15 https://broker.actions.githubusercontent.com/health
 done
 
+# La lane Gate sólo necesita ejecutar shell/control-plane; no debe depender de Docker-in-Docker.
+gate_runner="runner-04"
+gate_name="$(runner_name "$gate_runner")"
+gate_storage="$(runner_storage_dir "$gate_runner")"
+check "${gate_name} registrado localmente" test -f "$gate_storage/.runner"
+check "Contenedor ${gate_runner} healthy" container_is_healthy "$gate_runner"
+check "Salida HTTPS de ${gate_runner} hacia GitHub" compose exec -T "$gate_runner" curl -fsS --max-time 15 https://api.github.com/zen
+check "Broker de GitHub Actions accesible desde ${gate_runner}" compose exec -T "$gate_runner" curl -fsS --max-time 15 https://broker.actions.githubusercontent.com/health
+
 check "Timer watchdog habilitado" systemctl is-enabled --quiet coferlandia-ci-watchdog.timer
 check "Timer cleanup habilitado" systemctl is-enabled --quiet coferlandia-ci-cleanup.timer
 
@@ -90,4 +99,4 @@ if (( failures > 0 )); then
   exit 1
 fi
 
-printf '\nInstalación de tres runners verificada localmente y en los controles remotos disponibles.\n'
+printf '\nInstalación de tres runners pesados y una lane Gate verificada localmente y en los controles remotos disponibles.\n'
