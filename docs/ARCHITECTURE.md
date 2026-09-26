@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-La topología actual permite ejecutar tres jobs simultáneos sin permitir que un job interfiera con el ambiente Docker de los otros ni con los contenedores productivos del host.
+La topología actual permite ejecutar tres jobs pesados simultáneos y un Gate liviano independiente sin permitir que un job interfiera con el ambiente Docker de los otros ni con los contenedores productivos del host.
 
 ## Componentes
 
@@ -14,6 +14,7 @@ La topología actual permite ejecutar tres jobs simultáneos sin permitir que un
 | `docker-ci-02` | Docker exclusivo del runner 2 | `docker-02`, `certs-02` |
 | `runner-03` | Listener GitHub Actions 3 | `runner-03`, `work-03`, `cache-03` |
 | `docker-ci-03` | Docker exclusivo del runner 3 | `docker-03`, `certs-03` |
+| `runner-04` | Listener liviano exclusivo para Gate/agregación | `runner-04`, `work-04`, `cache-04` |
 | filesystem CI | Techo de almacenamiento común | `/srv/coferlandia-ci` |
 | watchdog | Salud, disco y alertas | systemd/journald |
 | cleanup | Retención y recuperación | systemd/journald |
@@ -36,9 +37,9 @@ Docker Engine no ofrece namespaces independientes por cliente. Por ese motivo, l
 ## Concurrencia efectiva
 
 - Cada `Runner.Listener` ejecuta un solo job.
-- Existen tres listeners.
-- Capacidad máxima: tres jobs simultáneos.
-- Un cuarto job compatible queda en cola.
+- Existen tres listeners pesados y un listener Gate liviano.
+- Capacidad pesada máxima: tres jobs simultáneos.
+- Un cuarto job pesado queda en cola; el Gate puede correr en paralelo en `runner-04`.
 - Dentro de cada job pueden ejecutarse múltiples procesos y contenedores.
 
 ## Aislamiento
@@ -47,6 +48,7 @@ Docker Engine no ofrece namespaces independientes por cliente. Por ese motivo, l
 runner-01 → red-01 → docker-ci-01
 runner-02 → red-02 → docker-ci-02
 runner-03 → red-03 → docker-ci-03
+runner-04 → gate-network → GitHub (sin DinD)
 ```
 
 No existe conectividad necesaria entre los pares. Ninguno monta el socket Docker del host.
@@ -101,4 +103,4 @@ Los tres runners usan las mismas etiquetas personalizadas. GitHub decide cuál e
 runs-on: [self-hosted, coferlandia-ci]
 ```
 
-No codifique un runner individual en los workflows salvo que exista una necesidad diagnóstica excepcional.
+Los jobs pesados no deben codificar un runner individual. Los jobs de agregación/Gate deben usar `runs-on: [self-hosted, coferlandia-ci-gate]` para no competir con los workers PostgreSQL/Docker.
