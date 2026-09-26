@@ -1,6 +1,6 @@
 # Coferlandia CI Runner
 
-Servidor self-hosted de GitHub Actions para ejecutar hasta **tres jobs concurrentes** en una VM compartida, sin exponer el Docker productivo del host.
+Servidor self-hosted de GitHub Actions para ejecutar hasta **tres jobs pesados concurrentes** y un Gate liviano independiente en una VM compartida, sin exponer el Docker productivo del host.
 
 Versión: **0.3.1**
 
@@ -16,13 +16,14 @@ VM Coferlandia
     ├── runner-01 ──TLS── docker-ci-01
     ├── runner-02 ──TLS── docker-ci-02
     ├── runner-03 ──TLS── docker-ci-03
+    ├── runner-04 (Gate liviano, sin DinD)
     ├── filesystem limitado /srv/coferlandia-ci
     └── systemd
         ├── watchdog cada 5 minutos
         └── cleanup diario
 ```
 
-Cada listener acepta un job. GitHub puede ejecutar tres jobs simultáneos, uno en cada runner. Cada runner posee credenciales, workspace, cachés, daemon Docker-in-Docker y red Docker interna independientes.
+Cada listener acepta un job. Los runners 01–03 ejecutan hasta tres jobs pesados simultáneos, cada uno con su propio Docker-in-Docker. `runner-04` está reservado a jobs livianos de agregación/Gate y no tiene Docker daemon.
 
 La separación de los daemons es deliberada. Los hooks pueden eliminar contenedores, redes y volúmenes al terminar un job sin afectar los jobs concurrentes de los otros runners.
 
@@ -62,7 +63,7 @@ Los workflows no necesitan elegir un runner específico:
 runs-on: [self-hosted, coferlandia-ci]
 ```
 
-Cuando tres jobs compatibles están en cola, GitHub puede asignarlos a `coferlandia-ci-01`, `coferlandia-ci-02` y `coferlandia-ci-03`. Un cuarto job permanece en cola hasta que alguno quede libre.
+Cuando tres jobs pesados están en cola, GitHub puede asignarlos a `coferlandia-ci-01`, `coferlandia-ci-02` y `coferlandia-ci-03`. Los jobs que usan `coferlandia-ci-gate` corren en `runner-04` sin competir por esos tres slots.
 
 ## Documentación
 
