@@ -6,7 +6,7 @@
 runs-on: [self-hosted, coferlandia-ci]
 ```
 
-GitHub selecciona cualquiera de los dos runners libres. No es necesario conocer cuál ejecutará el job.
+GitHub selecciona cualquiera de los tres runners pesados libres. No es necesario conocer cuál ejecutará el job.
 
 ## Dos jobs simultáneos
 
@@ -35,6 +35,16 @@ strategy:
 ```
 
 Un tercer elemento de matriz quedará en cola hasta que termine uno de los dos primeros.
+
+## Gate / agregación liviana
+
+Los jobs que sólo consumen outputs/resultados y no ejecutan producto ni Docker deben usar la lane dedicada:
+
+```yaml
+runs-on: [self-hosted, coferlandia-ci-gate]
+```
+
+Ese listener no tiene Docker-in-Docker y no compite con los tres slots pesados.
 
 ## Docker Compose
 

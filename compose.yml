@@ -191,6 +191,29 @@ services:
       - ./hooks:/opt/runner-hooks:ro
     networks: [ci-network-03]
 
+  runner-04:
+    <<: *runner-common
+    container_name: ${COMPOSE_PROJECT_NAME:-coferlandia-ci}-runner-04
+    environment:
+      RUNNER_URL: ${RUNNER_URL}
+      RUNNER_NAME: ${RUNNER_04_NAME:-coferlandia-ci-gate}
+      RUNNER_LABELS: ${RUNNER_04_LABELS:-coferlandia-ci-gate}
+      RUNNER_GROUP: ${RUNNER_GROUP:-Default}
+      RUNNER_WORKDIR: ${RUNNER_WORKDIR:-_work}
+      RUNNER_TOOL_CACHE: /cache/toolcache
+      NUGET_PACKAGES: /cache/nuget
+      npm_config_cache: /cache/npm
+      PIP_CACHE_DIR: /cache/pip
+    cpus: ${GATE_RUNNER_CPUS:-0.10}
+    mem_limit: ${GATE_RUNNER_MEMORY:-768m}
+    mem_reservation: ${GATE_RUNNER_MEMORY_RESERVATION:-128m}
+    pids_limit: ${GATE_RUNNER_PIDS_LIMIT:-128}
+    volumes:
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/runner-04:/opt/actions-runner
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/work-04:/opt/actions-runner/_work
+      - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/cache-04:/cache
+    networks: [gate-network]
+
 networks:
   ci-network-01:
     name: ${COMPOSE_PROJECT_NAME:-coferlandia-ci}-network-01
@@ -200,4 +223,7 @@ networks:
     driver: bridge
   ci-network-03:
     name: ${COMPOSE_PROJECT_NAME:-coferlandia-ci}-network-03
+    driver: bridge
+  gate-network:
+    name: ${COMPOSE_PROJECT_NAME:-coferlandia-ci}-gate-network
     driver: bridge

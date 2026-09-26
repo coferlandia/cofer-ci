@@ -70,6 +70,16 @@ for index in 01 02 03; do
   chmod 0711     "$CI_STORAGE_ROOT/runner-${index}"     "$CI_STORAGE_ROOT/work-${index}"     "$CI_STORAGE_ROOT/cache-${index}"
 done
 
+mkdir -p \
+  "$CI_STORAGE_ROOT/runner-04" \
+  "$CI_STORAGE_ROOT/work-04" \
+  "$CI_STORAGE_ROOT/cache-04/toolcache" \
+  "$CI_STORAGE_ROOT/cache-04/nuget" \
+  "$CI_STORAGE_ROOT/cache-04/npm" \
+  "$CI_STORAGE_ROOT/cache-04/pip"
+chown -R 1001:123 "$CI_STORAGE_ROOT/runner-04" "$CI_STORAGE_ROOT/work-04" "$CI_STORAGE_ROOT/cache-04"
+chmod 0711 "$CI_STORAGE_ROOT/runner-04" "$CI_STORAGE_ROOT/work-04" "$CI_STORAGE_ROOT/cache-04"
+
 chmod 0755 "$CI_STORAGE_ROOT"
 chmod +x   "$PROJECT_DIR"/runner/*.sh   "$PROJECT_DIR"/hooks/*.sh   "$PROJECT_DIR"/scripts/*.sh
 
@@ -79,7 +89,7 @@ Almacenamiento preparado:
   Imagen:  ${CI_STORAGE_IMAGE}
   Montaje: ${CI_STORAGE_ROOT}
   Límite:  ${CI_STORAGE_SIZE}
-  Runners: 3, con datos, workspaces, cachés y Docker CI independientes
+  Runners: 3 pesados con Docker CI + 1 Gate liviano sin DinD
 
 Siguiente paso:
   1. Edite ${ENV_FILE}
