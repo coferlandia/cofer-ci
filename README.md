@@ -1,6 +1,6 @@
 # Coferlandia CI Runner
 
-Servidor self-hosted de GitHub Actions para ejecutar hasta **tres jobs concurrentes** en una VM compartida, sin exponer el Docker productivo del host.
+Servidor self-hosted de GitHub Actions con **tres runners pesados concurrentes** y una **lane liviana dedicada a jobs de agregación/control-plane**, sin exponer el Docker productivo del host.
 
 Versión: **0.3.1**
 
@@ -16,13 +16,14 @@ VM Coferlandia
     ├── runner-01 ──TLS── docker-ci-01
     ├── runner-02 ──TLS── docker-ci-02
     ├── runner-03 ──TLS── docker-ci-03
+    ├── runner-gate-01  (sin Docker-in-Docker)
     ├── filesystem limitado /srv/coferlandia-ci
     └── systemd
         ├── watchdog cada 5 minutos
         └── cleanup diario
 ```
 
-Cada listener acepta un job. GitHub puede ejecutar tres jobs simultáneos, uno en cada runner. Cada runner posee credenciales, workspace, cachés, daemon Docker-in-Docker y red Docker interna independientes.
+Cada listener acepta un job. Los tres runners `coferlandia-ci` ejecutan trabajo pesado en paralelo; `coferlandia-ci-gate` queda reservado para agregación/control-plane y no comparte la cola de Docker/PostgreSQL. Cada runner posee credenciales, workspace, cachés, daemon Docker-in-Docker y red Docker interna independientes.
 
 La separación de los daemons es deliberada. Los hooks pueden eliminar contenedores, redes y volúmenes al terminar un job sin afectar los jobs concurrentes de los otros runners.
 
@@ -59,7 +60,11 @@ sudo ./scripts/cleanup.sh
 Los workflows no necesitan elegir un runner específico:
 
 ```yaml
+# Tests pesados / Docker
 runs-on: [self-hosted, coferlandia-ci]
+
+# Gate/control-plane liviano
+runs-on: [self-hosted, coferlandia-ci-gate]
 ```
 
 Cuando tres jobs compatibles están en cola, GitHub puede asignarlos a `coferlandia-ci-01`, `coferlandia-ci-02` y `coferlandia-ci-03`. Un cuarto job permanece en cola hasta que alguno quede libre.
