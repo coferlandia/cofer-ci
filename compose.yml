@@ -201,8 +201,6 @@ services:
       RUNNER_LABELS: ${RUNNER_04_LABELS:-coferlandia-ci-gate}
       RUNNER_GROUP: ${RUNNER_GROUP:-Default}
       RUNNER_WORKDIR: ${RUNNER_WORKDIR:-_work}
-      ACTIONS_RUNNER_HOOK_JOB_STARTED: /opt/runner-hooks/pre-job.sh
-      ACTIONS_RUNNER_HOOK_JOB_COMPLETED: /opt/runner-hooks/post-job.sh
       RUNNER_TOOL_CACHE: /cache/toolcache
       NUGET_PACKAGES: /cache/nuget
       npm_config_cache: /cache/npm
