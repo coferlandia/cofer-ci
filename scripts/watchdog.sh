@@ -271,7 +271,7 @@ if [[ "$previous_status" == "failed" ]]; then
   send_telegram "✅ Coferlandia CI se recuperó
 
 Servidor: $(hostname)
-Tres runners y tres Docker CI: healthy
+Tres runners pesados, una lane Gate y tres Docker CI: healthy
 Almacenamiento: ${usage_text}
 Fecha: $(date --iso-8601=seconds)" || true
 fi
