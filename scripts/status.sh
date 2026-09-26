@@ -7,7 +7,7 @@ source "${SCRIPT_DIR}/common.sh"
 load_env
 load_monitor_env
 
-printf 'Coferlandia CI - tres runners concurrentes\n\n'
+printf 'Coferlandia CI - tres runners pesados + una lane Gate\n\n'
 
 if ! docker info >/dev/null 2>&1; then
   printf 'Docker host:             ERROR - no responde\n'
