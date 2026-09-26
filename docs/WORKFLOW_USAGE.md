@@ -1,5 +1,15 @@
 # Uso en workflows
 
+## Lane dedicada al Gate
+
+Los jobs de agregación que no ejecutan código de producto, Docker ni PostgreSQL deben usar la lane liviana:
+
+```yaml
+runs-on: [self-hosted, Linux, ARM64, coferlandia-ci-gate]
+```
+
+Esta lane tiene un único listener y no declara el label `docker`. Su objetivo es que un Gate listo no quede detrás de suites pesadas.
+
 ## Selección normal
 
 ```yaml
