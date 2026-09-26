@@ -245,7 +245,7 @@ sudo ./scripts/status.sh
 sudo ./scripts/verify-installation.sh
 ```
 
-Los tres runners deben regresar `online/Idle` sin re-registro manual.
+Los cuatro runners deben regresar `online/Idle` sin re-registro manual.
 
 ## 11. Rollback
 
@@ -263,9 +263,9 @@ No restaure una versión cuyo `compose.yml` describa `runner`/`docker-ci` único
 La actualización queda cerrada cuando:
 
 - el directorio operativo y `VERSION` corresponden a la misma versión;
-- `docker compose config --services` muestra los seis servicios;
-- los seis contenedores están healthy;
-- los tres runners están `online` en GitHub;
+- `docker compose config --services` muestra los siete servicios;
+- los siete contenedores están healthy;
+- los cuatro runners están `online` en GitHub;
 - watchdog y cleanup están habilitados;
 - el watchdog tiene monitoreo remoto configurado;
 - un reboot completo recupera ambos runners sin intervención manual.
