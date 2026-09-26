@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Agregada lane `coferlandia-ci-gate` con un cuarto runner liviano sin Docker-in-Docker para jobs de agregación/control-plane.
+- Separado el Gate de Fast CI de los tres runners pesados para que no compita con PostgreSQL/FULL.
+- Extendidos provisión, registro, status, watchdog y verificación para la topología 3+1.
+
 - Aumentado el límite predeterminado de cada runner de 3 GiB a 5 GiB después de confirmar un OOM de cgroup durante una validación completa de SecretarIA: los 2270 tests backend habían terminado correctamente, pero `pytest` fue finalizado con `SIGKILL`/exit 137 antes de cerrar el proceso.
 - Alineada la configuración predeterminada de los Docker-in-Docker con la instalación operativa validada: 4 GiB de memoria, 1024 PIDs y 512 MiB de `shm` por daemon.
 - Actualizada la documentación de dimensionamiento, instalación y diagnóstico de OOM para que una instalación limpia reproduzca la línea base operativa actual.
