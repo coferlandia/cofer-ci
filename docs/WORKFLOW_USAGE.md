@@ -16,9 +16,9 @@ Esta lane tiene un único listener y no declara el label `docker`. Su objetivo e
 runs-on: [self-hosted, coferlandia-ci]
 ```
 
-GitHub selecciona cualquiera de los dos runners libres. No es necesario conocer cuál ejecutará el job.
+GitHub selecciona cualquiera de los tres runners pesados libres. No es necesario conocer cuál ejecutará el job.
 
-## Dos jobs simultáneos
+## Jobs pesados simultáneos
 
 ```yaml
 jobs:
@@ -33,7 +33,7 @@ jobs:
       - run: ./scripts/test-b.sh
 ```
 
-Si ambos están listos al mismo tiempo, cada runner recibe uno.
+Si varios están listos al mismo tiempo, GitHub puede distribuir hasta tres jobs pesados en paralelo.
 
 ## Matriz paralela
 
@@ -71,7 +71,7 @@ Para caché portable entre runners, use `actions/cache` cuando sea apropiado.
 
 ## Concurrency de GitHub
 
-La capacidad física es dos, pero cada workflow puede limitarse:
+La capacidad pesada es tres jobs concurrentes y la lane Gate agrega un slot independiente; cada workflow puede limitar su propia concurrencia:
 
 ```yaml
 concurrency:
@@ -87,4 +87,4 @@ Defina límites explícitos:
 timeout-minutes: 30
 ```
 
-Esto evita ocupar indefinidamente uno de los dos slots.
+Esto evita ocupar indefinidamente un slot.
