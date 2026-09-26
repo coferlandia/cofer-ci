@@ -266,3 +266,19 @@ La actualización queda cerrada cuando:
 - watchdog y cleanup están habilitados;
 - el watchdog tiene monitoreo remoto configurado;
 - un reboot completo recupera ambos runners sin intervención manual.
+
+
+## Ampliación: runner Gate dedicado
+
+A partir de esta topología se agrega `runner-04` como listener liviano exclusivo para jobs de agregación/Gate. No tiene Docker-in-Docker y usa la etiqueta `coferlandia-ci-gate`.
+
+Después de actualizar los archivos:
+
+```bash
+sudo ./scripts/install-host.sh
+./scripts/register-runners.sh
+docker compose up -d runner-04
+sudo ./scripts/verify-installation.sh
+```
+
+En GitHub deben quedar visibles tres runners pesados con `coferlandia-ci,docker` y un cuarto runner con `coferlandia-ci-gate`. Los workflows de Gate sólo deben usar este último label.
