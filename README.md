@@ -2,7 +2,7 @@
 
 Servidor self-hosted de GitHub Actions con **tres runners pesados concurrentes** y una **lane liviana dedicada a jobs de agregación/control-plane**, sin exponer el Docker productivo del host.
 
-Versión: **0.3.1**
+Versión: **0.4.0**
 
 ## Arquitectura
 
@@ -23,7 +23,7 @@ VM Coferlandia
         └── cleanup diario
 ```
 
-Cada listener acepta un job. Los tres runners `coferlandia-ci` ejecutan trabajo pesado en paralelo; `coferlandia-ci-gate` queda reservado para agregación/control-plane y no comparte la cola de Docker/PostgreSQL. Cada runner posee credenciales, workspace, cachés, daemon Docker-in-Docker y red Docker interna independientes.
+Cada listener acepta un job. Los tres runners `coferlandia-ci` ejecutan trabajo pesado en paralelo; `coferlandia-ci-gate` queda reservado para agregación/control-plane y no comparte la cola de Docker/PostgreSQL. Cada runner posee credenciales, workspace y cachés independientes. Sólo los tres runners pesados poseen daemon Docker-in-Docker y red Docker interna.
 
 La separación de los daemons es deliberada. Los hooks pueden eliminar contenedores, redes y volúmenes al terminar un job sin afectar los jobs concurrentes de los otros runners.
 
@@ -67,7 +67,7 @@ runs-on: [self-hosted, coferlandia-ci]
 runs-on: [self-hosted, coferlandia-ci-gate]
 ```
 
-Cuando tres jobs compatibles están en cola, GitHub puede asignarlos a `coferlandia-ci-01`, `coferlandia-ci-02` y `coferlandia-ci-03`. Un cuarto job permanece en cola hasta que alguno quede libre.
+Cuando tres jobs pesados compatibles están en cola, GitHub puede asignarlos a `coferlandia-ci-01`, `coferlandia-ci-02` y `coferlandia-ci-03`. Los jobs de Gate usan exclusivamente `coferlandia-ci-gate-01` y no compiten por esos tres slots.
 
 ## Documentación
 
