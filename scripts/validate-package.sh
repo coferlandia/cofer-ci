@@ -62,13 +62,6 @@ for doc in \
   [[ -s "$doc" ]] && ok "Documento $doc" || fail "Documento $doc"
 done
 
-if (( failures > 0 )); then
-  printf '\nValidación fallida: %s problema(s).\n' "$failures" >&2
-  exit 1
-fi
-
-printf '\nPaquete validado.\n'
-
 grep -q 'RUNNER_LABELS: ${RUNNER_04_LABELS:-coferlandia-ci-gate}' compose.yml &&
   ok "Runner Gate usa label exclusiva" || fail "Runner Gate debe usar coferlandia-ci-gate"
 if awk '/^  runner-04:/{flag=1;next}/^  [a-zA-Z0-9_-]+:/{if(flag) exit}flag' compose.yml | grep -q 'DOCKER_HOST'; then
@@ -76,3 +69,10 @@ if awk '/^  runner-04:/{flag=1;next}/^  [a-zA-Z0-9_-]+:/{if(flag) exit}flag' com
 else
   ok "Runner Gate sin Docker-in-Docker"
 fi
+
+if (( failures > 0 )); then
+  printf '\nValidación fallida: %s problema(s).\n' "$failures" >&2
+  exit 1
+fi
+
+printf '\nPaquete validado.\n'
