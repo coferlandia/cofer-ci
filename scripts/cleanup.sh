@@ -67,3 +67,20 @@ for dind in "${DIND_SERVICES[@]}"; do
   printf '\n%s:\n' "$dind"
   compose exec -T "$dind" docker system df 2>/dev/null || true
 done
+
+
+# The Gate runner has no Docker daemon. Only its package cache/workspace require retention.
+gate_runner="runner-04"
+gate_cache="${CI_STORAGE_ROOT}/cache-04"
+gate_work="${CI_STORAGE_ROOT}/work-04"
+gate_busy=false
+runner_is_busy "$gate_runner" && gate_busy=true
+log "${gate_runner}: busy=${gate_busy} (lightweight Gate lane)"
+if [[ "$gate_busy" == false ]]; then
+  find "$gate_cache" -type f -mtime "+${PACKAGE_CACHE_RETENTION_DAYS:-30}" -delete 2>/dev/null || true
+  usage="$(storage_usage_percent)"
+  if (( usage >= ${DISK_AGGRESSIVE_PERCENT:-82} )); then
+    find "$gate_work" -mindepth 1 -maxdepth 1 ! -name '_actions' ! -name '_tool' ! -name '_temp' -mtime "+${WORKSPACE_RETENTION_DAYS:-7}" -exec rm -rf -- {} + 2>/dev/null || true
+    find "$gate_cache" -type f -mtime +7 -delete 2>/dev/null || true
+  fi
+fi
