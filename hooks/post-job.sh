@@ -2,6 +2,8 @@
 # Limpieza liviana del Docker CI asignado exclusivamente a este runner.
 # Conserva imágenes y build cache para acelerar el siguiente job de ese runner.
 set -uo pipefail
+# shellcheck source=cache-pressure.sh
+source "/opt/runner-hooks/cache-pressure.sh"
 
 log() {
   printf '[post-job] %s\n' "$*"
@@ -16,6 +18,8 @@ log "Eliminando contenedores, redes y volúmenes temporales de este runner"
 docker ps -aq | xargs -r docker rm -f >/dev/null 2>&1 || true
 docker network prune -f >/dev/null 2>&1 || true
 docker volume prune -f >/dev/null 2>&1 || true
+
+reclaim_runner_cache_if_needed "post-job"
 
 log "Se conservan imágenes y build cache reutilizables"
 docker system df || true
