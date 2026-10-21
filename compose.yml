@@ -49,6 +49,8 @@ x-runner-common: &runner-common
     NUGET_PACKAGES: /cache/nuget
     npm_config_cache: /cache/npm
     PIP_CACHE_DIR: /cache/pip
+    RUNNER_CACHE_PRESSURE_PERCENT: ${RUNNER_CACHE_PRESSURE_PERCENT:-78}
+    RUNNER_CACHE_EMERGENCY_PERCENT: ${RUNNER_CACHE_EMERGENCY_PERCENT:-88}
   cpus: ${RUNNER_CPUS:-0.50}
   mem_limit: ${RUNNER_MEMORY:-5g}
   mem_reservation: ${RUNNER_MEMORY_RESERVATION:-512m}
@@ -101,6 +103,8 @@ services:
       NUGET_PACKAGES: /cache/nuget
       npm_config_cache: /cache/npm
       PIP_CACHE_DIR: /cache/pip
+    RUNNER_CACHE_PRESSURE_PERCENT: ${RUNNER_CACHE_PRESSURE_PERCENT:-78}
+    RUNNER_CACHE_EMERGENCY_PERCENT: ${RUNNER_CACHE_EMERGENCY_PERCENT:-88}
     volumes:
       - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/runner-01:/opt/actions-runner
       - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/work-01:/opt/actions-runner/_work
@@ -142,6 +146,8 @@ services:
       NUGET_PACKAGES: /cache/nuget
       npm_config_cache: /cache/npm
       PIP_CACHE_DIR: /cache/pip
+    RUNNER_CACHE_PRESSURE_PERCENT: ${RUNNER_CACHE_PRESSURE_PERCENT:-78}
+    RUNNER_CACHE_EMERGENCY_PERCENT: ${RUNNER_CACHE_EMERGENCY_PERCENT:-88}
     volumes:
       - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/runner-02:/opt/actions-runner
       - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/work-02:/opt/actions-runner/_work
@@ -183,6 +189,8 @@ services:
       NUGET_PACKAGES: /cache/nuget
       npm_config_cache: /cache/npm
       PIP_CACHE_DIR: /cache/pip
+    RUNNER_CACHE_PRESSURE_PERCENT: ${RUNNER_CACHE_PRESSURE_PERCENT:-78}
+    RUNNER_CACHE_EMERGENCY_PERCENT: ${RUNNER_CACHE_EMERGENCY_PERCENT:-88}
     volumes:
       - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/runner-03:/opt/actions-runner
       - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/work-03:/opt/actions-runner/_work
@@ -204,6 +212,8 @@ services:
       NUGET_PACKAGES: /cache/nuget
       npm_config_cache: /cache/npm
       PIP_CACHE_DIR: /cache/pip
+    RUNNER_CACHE_PRESSURE_PERCENT: ${RUNNER_CACHE_PRESSURE_PERCENT:-78}
+    RUNNER_CACHE_EMERGENCY_PERCENT: ${RUNNER_CACHE_EMERGENCY_PERCENT:-88}
     cpus: ${GATE_RUNNER_CPUS:-0.10}
     mem_limit: ${GATE_RUNNER_MEMORY:-768m}
     mem_reservation: ${GATE_RUNNER_MEMORY_RESERVATION:-128m}
