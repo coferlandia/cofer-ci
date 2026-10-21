@@ -71,12 +71,7 @@ else
 fi
 
 
-grep -q '^CI_STORAGE_SIZE=80G  printf '\nValidación fallida: %s problema(s).\n' "$failures" >&2
-  exit 1
-fi
-
-printf '\nPaquete validado.\n'
- .env.example &&
+grep -q '^CI_STORAGE_SIZE=80G$' .env.example &&
   ok "Baseline de almacenamiento CI 80G" || fail "CI_STORAGE_SIZE debe ser 80G"
 
 for hook in hooks/pre-job.sh hooks/post-job.sh; do
