@@ -70,6 +70,21 @@ else
   ok "Runner Gate sin Docker-in-Docker"
 fi
 
+
+grep -q '^CI_STORAGE_SIZE=80G$' .env.example &&
+  ok "Baseline de almacenamiento CI 80G" || fail "CI_STORAGE_SIZE debe ser 80G"
+
+for hook in hooks/pre-job.sh hooks/post-job.sh; do
+  grep -q 'source "/opt/runner-hooks/cache-pressure.sh"' "$hook" &&
+    ok "$hook usa protección de cache por presión" ||
+    fail "$hook debe cargar cache-pressure.sh"
+done
+
+grep -q 'RUNNER_CACHE_PRESSURE_PERCENT' compose.yml &&
+  grep -q 'RUNNER_CACHE_EMERGENCY_PERCENT' compose.yml &&
+  ok "Compose expone umbrales de presión de cache" ||
+  fail "Compose debe exponer los umbrales de presión de cache"
+
 if (( failures > 0 )); then
   printf '\nValidación fallida: %s problema(s).\n' "$failures" >&2
   exit 1

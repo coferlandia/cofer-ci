@@ -19,13 +19,19 @@ Cada runner ejecuta hooks sobre su propio Docker CI:
 
 La separación por daemon impide que el hook del runner 1 afecte un job del runner 2.
 
-## Limpieza diaria
+## Limpieza periódica
 
 ```bash
 sudo ./scripts/cleanup.sh
 ```
 
-El script recorre ambos pares. Puede limpiar el runner que está idle aunque el otro esté ocupado. No elimina el workspace ni las cachés de un runner con `Runner.Worker` activo.
+El timer ejecuta este script aproximadamente una vez por hora. El script recorre los tres runners pesados y el Gate. Puede limpiar un runner que está idle aunque otro esté ocupado. No elimina workspaces ni cachés de un runner con `Runner.Worker` activo.
+
+Además, los hooks pre/post-job controlan la presión del filesystem compartido desde cada runner aislado:
+
+- desde `RUNNER_CACHE_PRESSURE_PERCENT` (78% por defecto), vacían caches regenerables de npm/pip/nuget;
+- desde `RUNNER_CACHE_EMERGENCY_PERCENT` (88% por defecto), también vacían `toolcache`;
+- nunca reducen cobertura de tests ni borran workspaces activos.
 
 ## Umbrales
 
@@ -34,12 +40,16 @@ DISK_WARN_PERCENT=75
 DISK_AGGRESSIVE_PERCENT=82
 DISK_EMERGENCY_PERCENT=90
 DISK_RECOVERY_PERCENT=70
+RUNNER_CACHE_PRESSURE_PERCENT=78
+RUNNER_CACHE_EMERGENCY_PERCENT=88
 ```
 
 - 75%: advertencia.
 - 82%: limpieza agresiva del runner idle.
 - 90%: pausa cada runner idle para proteger la VM.
 - 70%: recuperación automática de runners pausados.
+- 78%: los hooks de un runner pueden purgar caches regenerables antes/después del job.
+- 88%: los hooks pueden purgar también `toolcache` para evitar ENOSPC durante instalación de dependencias.
 
 Un job activo no se interrumpe automáticamente por el cleanup. El watchdog seguirá alertando si el uso es crítico.
 
@@ -71,13 +81,15 @@ Este archivo contiene secretos. Protéjalo como root y elimínelo después de la
 
 ## Ampliar el filesystem
 
-Ejemplo de 30 a 40 GiB:
+La topología actual de tres runners pesados + Gate usa 80 GiB como baseline de instalación limpia. Una instalación histórica de 45 GiB debe ampliarse si el host tiene capacidad suficiente.
+
+Ejemplo de 45 a 80 GiB:
 
 ```bash
 sudo systemctl stop coferlandia-ci-watchdog.timer coferlandia-ci-cleanup.timer
 docker compose stop
 sudo umount /srv/coferlandia-ci
-sudo truncate -s 40G /var/lib/coferlandia-ci.img
+sudo truncate -s 80G /var/lib/coferlandia-ci.img
 sudo e2fsck -f /var/lib/coferlandia-ci.img
 sudo resize2fs /var/lib/coferlandia-ci.img
 sudo mount /srv/coferlandia-ci

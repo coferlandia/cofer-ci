@@ -1,9 +1,11 @@
 [Unit]
-Description=Limpieza diaria de Coferlandia CI
+Description=Limpieza periódica de Coferlandia CI
 
 [Timer]
-OnCalendar=*-*-* 04:15:00
-RandomizedDelaySec=15min
+OnBootSec=15min
+OnUnitActiveSec=1h
+AccuracySec=5min
+RandomizedDelaySec=5min
 Persistent=true
 Unit=coferlandia-ci-cleanup.service
 

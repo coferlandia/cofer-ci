@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Endurecida la política de almacenamiento para la topología actual de tres runners pesados + Gate: baseline de instalación limpia de 80 GiB, retención de paquetes más corta y menor presupuesto de BuildKit.
+- Los hooks pre/post-job ahora purgan caches regenerables bajo presión de disco y reservan la purga de toolcache para emergencia.
+- El cleanup pasa de diario a horario y la limpieza agresiva deja de depender de la antigüedad de archivos cuando el filesystem compartido está cerca de ENOSPC.
 - Aumentado el límite predeterminado de cada runner de 3 GiB a 5 GiB después de confirmar un OOM de cgroup durante una validación completa de SecretarIA: los 2270 tests backend habían terminado correctamente, pero `pytest` fue finalizado con `SIGKILL`/exit 137 antes de cerrar el proceso.
 - Alineada la configuración predeterminada de los Docker-in-Docker con la instalación operativa validada: 4 GiB de memoria, 1024 PIDs y 512 MiB de `shm` por daemon.
 - Actualizada la documentación de dimensionamiento, instalación y diagnóstico de OOM para que una instalación limpia reproduzca la línea base operativa actual.
