@@ -8,10 +8,16 @@ load_env
 require_command docker
 mountpoint -q "${CI_STORAGE_ROOT}" || fatal "${CI_STORAGE_ROOT} no está montado"
 
+clear_cache_dir() {
+  local dir="$1"
+  [[ -d "$dir" ]] || return 0
+  find "$dir" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + 2>/dev/null || true
+}
+
 usage_before="$(storage_usage_percent)"
 log "Limpieza iniciada. Uso=${usage_before}%"
 
-docker image prune -af   --filter 'label=io.coferlandia.ci=true'   --filter "until=${IMAGE_RETENTION_HOURS:-168}h"   >/dev/null 2>&1 || true
+docker image prune -af   --filter 'label=io.coferlandia.ci=true'   --filter "until=${IMAGE_RETENTION_HOURS:-72}h"   >/dev/null 2>&1 || true
 
 for index in 01 02 03; do
   runner="runner-${index}"
@@ -27,12 +33,12 @@ for index in 01 02 03; do
   compose exec -T "$dind" docker container prune -f >/dev/null 2>&1 || true
   compose exec -T "$dind" docker network prune -f >/dev/null 2>&1 || true
   compose exec -T "$dind" docker volume prune -f >/dev/null 2>&1 || true
-  compose exec -T "$dind" docker image prune -af     --filter "until=${IMAGE_RETENTION_HOURS:-168}h"     >/dev/null 2>&1 || true
-  compose exec -T "$dind" docker builder prune -af     --keep-storage "${BUILDKIT_CACHE_KEEP:-4GB}"     >/dev/null 2>&1 || true
-  compose exec -T "$dind" docker buildx prune -af     --max-used-space "${BUILDKIT_CACHE_KEEP:-4GB}"     >/dev/null 2>&1 || true
+  compose exec -T "$dind" docker image prune -af     --filter "until=${IMAGE_RETENTION_HOURS:-72}h"     >/dev/null 2>&1 || true
+  compose exec -T "$dind" docker builder prune -af     --keep-storage "${BUILDKIT_CACHE_KEEP:-2GB}"     >/dev/null 2>&1 || true
+  compose exec -T "$dind" docker buildx prune -af     --max-used-space "${BUILDKIT_CACHE_KEEP:-2GB}"     >/dev/null 2>&1 || true
 
   if [[ "$busy" == false ]]; then
-    find "$cache" -type f       -mtime "+${PACKAGE_CACHE_RETENTION_DAYS:-30}"       -delete 2>/dev/null || true
+    find "$cache" -type f       -mtime "+${PACKAGE_CACHE_RETENTION_DAYS:-7}"       -delete 2>/dev/null || true
   fi
 
   usage="$(storage_usage_percent)"
@@ -40,19 +46,26 @@ for index in 01 02 03; do
     log "${runner}: umbral agresivo (${usage}%). Reduciendo cachés y workspace."
 
     compose exec -T "$dind" docker image prune -af       --filter 'until=24h' >/dev/null 2>&1 || true
-    compose exec -T "$dind" docker builder prune -af       --keep-storage "${BUILDKIT_CACHE_EMERGENCY_KEEP:-1GB}"       >/dev/null 2>&1 || true
-    compose exec -T "$dind" docker buildx prune -af       --max-used-space "${BUILDKIT_CACHE_EMERGENCY_KEEP:-1GB}"       >/dev/null 2>&1 || true
+    compose exec -T "$dind" docker builder prune -af       --keep-storage "${BUILDKIT_CACHE_EMERGENCY_KEEP:-512MB}"       >/dev/null 2>&1 || true
+    compose exec -T "$dind" docker buildx prune -af       --max-used-space "${BUILDKIT_CACHE_EMERGENCY_KEEP:-512MB}"       >/dev/null 2>&1 || true
 
-    find "$work"       -mindepth 1 -maxdepth 1       ! -name '_actions' ! -name '_tool' ! -name '_temp'       -mtime "+${WORKSPACE_RETENTION_DAYS:-7}"       -exec rm -rf -- {} + 2>/dev/null || true
+    find "$work"       -mindepth 1 -maxdepth 1       ! -name '_actions' ! -name '_tool' ! -name '_temp'       -mtime "+${WORKSPACE_RETENTION_DAYS:-2}"       -exec rm -rf -- {} + 2>/dev/null || true
 
-    find "$cache" -type f -mtime +7 -delete 2>/dev/null || true
+    clear_cache_dir "$cache/npm"
+    clear_cache_dir "$cache/pip"
+    clear_cache_dir "$cache/nuget"
   fi
 
   usage="$(storage_usage_percent)"
   if (( usage >= ${DISK_EMERGENCY_PERCENT:-90} )) && [[ "$busy" == false ]]; then
-    warn "${runner}: emergencia de disco (${usage}%). Se pausa este runner."
-    compose stop "$runner" >/dev/null 2>&1 || true
-    touch "$marker"
+    warn "${runner}: emergencia de disco (${usage}%). Limpiando toolcache antes de pausar."
+    clear_cache_dir "$cache/toolcache"
+    usage="$(storage_usage_percent)"
+    warn "${runner}: uso tras toolcache=${usage}%. Se pausa este runner si sigue en emergencia."
+    if (( usage >= ${DISK_EMERGENCY_PERCENT:-90} )); then
+      compose stop "$runner" >/dev/null 2>&1 || true
+      touch "$marker"
+    fi
   elif [[ -f "$marker" ]] && (( usage <= ${DISK_RECOVERY_PERCENT:-70} )); then
     log "${runner}: almacenamiento recuperado (${usage}%). Reiniciando."
     compose up -d "$runner" >/dev/null
@@ -77,10 +90,16 @@ gate_busy=false
 runner_is_busy "$gate_runner" && gate_busy=true
 log "${gate_runner}: busy=${gate_busy} (lightweight Gate lane)"
 if [[ "$gate_busy" == false ]]; then
-  find "$gate_cache" -type f -mtime "+${PACKAGE_CACHE_RETENTION_DAYS:-30}" -delete 2>/dev/null || true
+  find "$gate_cache" -type f -mtime "+${PACKAGE_CACHE_RETENTION_DAYS:-7}" -delete 2>/dev/null || true
   usage="$(storage_usage_percent)"
   if (( usage >= ${DISK_AGGRESSIVE_PERCENT:-82} )); then
-    find "$gate_work" -mindepth 1 -maxdepth 1 ! -name '_actions' ! -name '_tool' ! -name '_temp' -mtime "+${WORKSPACE_RETENTION_DAYS:-7}" -exec rm -rf -- {} + 2>/dev/null || true
-    find "$gate_cache" -type f -mtime +7 -delete 2>/dev/null || true
+    find "$gate_work" -mindepth 1 -maxdepth 1 ! -name '_actions' ! -name '_tool' ! -name '_temp' -mtime "+${WORKSPACE_RETENTION_DAYS:-2}" -exec rm -rf -- {} + 2>/dev/null || true
+    clear_cache_dir "$gate_cache/npm"
+    clear_cache_dir "$gate_cache/pip"
+    clear_cache_dir "$gate_cache/nuget"
+    usage="$(storage_usage_percent)"
+    if (( usage >= ${DISK_EMERGENCY_PERCENT:-90} )); then
+      clear_cache_dir "$gate_cache/toolcache"
+    fi
   fi
 fi
