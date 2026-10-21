@@ -22,7 +22,7 @@ set +a
 
 : "${CI_STORAGE_ROOT:=/srv/coferlandia-ci}"
 : "${CI_STORAGE_IMAGE:=/var/lib/coferlandia-ci.img}"
-: "${CI_STORAGE_SIZE:=45G}"
+: "${CI_STORAGE_SIZE:=80G}"
 
 for cmd in truncate mkfs.ext4 mount findmnt numfmt; do
   command -v "$cmd" >/dev/null 2>&1 || {
