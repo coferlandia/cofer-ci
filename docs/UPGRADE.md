@@ -129,7 +129,7 @@ RUNNER_03_NAME=coferlandia-ci-03
 RUNNER_LABELS=coferlandia-ci,docker
 RUNNER_GROUP=Default
 CI_STORAGE_ROOT=/srv/coferlandia-ci
-CI_STORAGE_SIZE=45G
+CI_STORAGE_SIZE=80G
 DIND_CPUS=0.75
 ```
 
@@ -141,6 +141,27 @@ Valide:
 ./scripts/check-prerequisites.sh
 docker compose config >/tmp/coferlandia-ci-compose.yml
 ```
+
+## 5.1 Ampliar almacenamiento histórico de 45 GiB
+
+Las instalaciones creadas antes de este ajuste pueden conservar un loopback de 45 GiB aunque el archivo `.env` nuevo declare 80 GiB. `install-host.sh` no agranda automáticamente un filesystem existente.
+
+Con todos los runners idle y suficiente espacio libre en el host:
+
+```bash
+sudo systemctl stop coferlandia-ci-watchdog.timer coferlandia-ci-cleanup.timer
+docker compose stop
+sudo umount /srv/coferlandia-ci
+sudo truncate -s 80G /var/lib/coferlandia-ci.img
+sudo e2fsck -f /var/lib/coferlandia-ci.img
+sudo resize2fs /var/lib/coferlandia-ci.img
+sudo mount /srv/coferlandia-ci
+docker compose up -d
+sudo systemctl start coferlandia-ci-watchdog.timer coferlandia-ci-cleanup.timer
+df -h /srv/coferlandia-ci
+```
+
+No reduzca el archivo con `truncate`. Antes de ampliar, compruebe que el filesystem que contiene `/var/lib/coferlandia-ci.img` pueda absorber el crecimiento dejando margen operativo al host.
 
 ## 6. Reconciliar los contenedores con el Compose nuevo
 
