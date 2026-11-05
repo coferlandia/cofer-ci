@@ -1,5 +1,7 @@
 # Validación del paquete 0.3.1
 
+> Registro histórico de validación de 0.3.1. Para el paquete actual 0.4.0, el validador de fuente es [`scripts/validate-package.sh`](scripts/validate-package.sh) y comprueba los siete servicios (cuatro runners + tres Docker CI); la verificación operativa en la VM se ejecuta con [`scripts/verify-installation.sh`](scripts/verify-installation.sh).
+
 Fecha: 2026-09-08
 
 ## Validación automatizada en PR

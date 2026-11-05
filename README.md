@@ -2,7 +2,7 @@
 
 Servidor self-hosted de GitHub Actions para ejecutar hasta **tres jobs pesados concurrentes** y un Gate liviano independiente en una VM compartida, sin exponer el Docker productivo del host.
 
-Versión: **0.3.1**
+Versión del código: **0.4.0**
 
 ## Arquitectura
 
@@ -20,7 +20,7 @@ VM Coferlandia
     ├── filesystem limitado /srv/coferlandia-ci
     └── systemd
         ├── watchdog cada 5 minutos
-        └── cleanup diario
+        └── cleanup horario
 ```
 
 Cada listener acepta un job. Los runners 01–03 ejecutan hasta tres jobs pesados simultáneos, cada uno con su propio Docker-in-Docker. `runner-04` está reservado a jobs livianos de agregación/Gate y no tiene Docker daemon.

@@ -5,7 +5,7 @@
 ```bash
 ./scripts/status.sh
 docker compose ps
-docker compose logs --tail=200 runner-01 runner-02
+docker compose logs --tail=200 runner-01 runner-02 runner-03 runner-04
 ```
 
 ## Limpieza por job
@@ -17,7 +17,7 @@ Cada runner ejecuta hooks sobre su propio Docker CI:
 - elimina volúmenes no usados;
 - conserva imágenes y build cache recientes.
 
-La separación por daemon impide que el hook del runner 1 afecte un job del runner 2.
+La separación por daemon impide que el hook de un runner pesado afecte los jobs de los otros. El Gate no ejecuta Docker-in-Docker.
 
 ## Limpieza periódica
 
@@ -55,26 +55,28 @@ Un job activo no se interrumpe automáticamente por el cleanup. El watchdog segu
 
 ## Actualización de imágenes
 
-Ejecutar sólo cuando ambos runners estén idle:
+Ejecutar sólo cuando los cuatro runners estén idle:
 
 ```bash
 ./scripts/update.sh
 ```
 
-El script actualiza ambos Docker-in-Docker, reconstruye una única imagen compartida del runner y reinicia el stack conservando registros y datos.
+El script descarga la imagen Docker-in-Docker compartida por los tres daemons, reconstruye la imagen común de los runners y reconcilia el stack completo con `docker compose up -d`, conservando registros y datos. Compruebe después que los siete servicios estén `healthy`.
 
 ## Backup de credenciales
 
 Normalmente es más simple volver a registrar los runners. Si se realiza una intervención y se decide respaldar las credenciales:
 
 ```bash
-sudo tar czf /root/coferlandia-ci-runner-credentials.tgz \
-  /srv/coferlandia-ci/runner-01/.runner \
-  /srv/coferlandia-ci/runner-01/.credentials \
-  /srv/coferlandia-ci/runner-01/.credentials_rsaparams \
-  /srv/coferlandia-ci/runner-02/.runner \
-  /srv/coferlandia-ci/runner-02/.credentials \
-  /srv/coferlandia-ci/runner-02/.credentials_rsaparams
+files=()
+for index in 01 02 03 04; do
+  for filename in .runner .credentials .credentials_rsaparams; do
+    files+=("/srv/coferlandia-ci/runner-${index}/${filename}")
+  done
+done
+sudo install -m 0600 /dev/null /root/coferlandia-ci-runner-credentials.tgz
+sudo tar czf /root/coferlandia-ci-runner-credentials.tgz "${files[@]}"
+sudo chmod 0600 /root/coferlandia-ci-runner-credentials.tgz
 ```
 
 Este archivo contiene secretos. Protéjalo como root y elimínelo después de la intervención.

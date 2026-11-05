@@ -12,6 +12,8 @@
 | watchdog → Telegram | 443 | saliente |
 | runner-01 → docker-ci-01 | 2376 | red interna 01, TLS |
 | runner-02 → docker-ci-02 | 2376 | red interna 02, TLS |
+| runner-03 → docker-ci-03 | 2376 | red interna 03, TLS |
+| runner-04 (Gate) → GitHub | 443 | saliente, sin Docker CI |
 | Internet → runners | ninguno | no requerido |
 
 No habilite 2376 en UFW, OCI Security Lists, Network Security Groups ni proxy reverso.
@@ -30,4 +32,6 @@ Salida desde cada runner:
 ```bash
 docker compose exec runner-01 curl -I https://api.github.com
 docker compose exec runner-02 curl -I https://api.github.com
+docker compose exec runner-03 curl -I https://api.github.com
+docker compose exec runner-04 curl -I https://api.github.com
 ```

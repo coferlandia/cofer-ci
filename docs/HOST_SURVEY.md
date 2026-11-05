@@ -1,6 +1,6 @@
 # Relevamiento de la VM antes y después
 
-El objetivo es medir el impacto real de los dos runners sobre la VM compartida y conservar evidencia para ajustar CPU, memoria y almacenamiento.
+El objetivo es medir el impacto real de los tres runners pesados y el Gate sobre la VM compartida y conservar evidencia para ajustar CPU, memoria y almacenamiento.
 
 ## Qué registra
 
@@ -75,7 +75,7 @@ Espere entre dos y cinco minutos para que terminen el arranque, healthchecks y d
 ./scripts/host-survey.sh after-idle
 ```
 
-Esto mide el costo base de mantener los dos runners conectados y los dos daemons Docker CI encendidos sin trabajo.
+Esto mide el costo base de mantener los cuatro runners conectados y los tres daemons Docker CI encendidos sin trabajo.
 
 ## 4. Comparar antes y después
 
@@ -126,7 +126,10 @@ DURING_METRICS="$(ls -1t reports/host-surveys/*-during-ci.metrics | head -n1)"
 También puede observar en vivo:
 
 ```bash
-docker stats coferlandia-ci-runner-01 coferlandia-ci-runner-02 coferlandia-ci-docker-01 coferlandia-ci-docker-02
+docker stats \
+  coferlandia-ci-runner-01 coferlandia-ci-runner-02 \
+  coferlandia-ci-runner-03 coferlandia-ci-runner-04 \
+  coferlandia-ci-docker-01 coferlandia-ci-docker-02 coferlandia-ci-docker-03
 watch -n 2 'free -h; echo; df -h / /srv/coferlandia-ci'
 ```
 

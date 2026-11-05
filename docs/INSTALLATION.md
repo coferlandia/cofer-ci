@@ -1,6 +1,6 @@
 # Instalación
 
-La instalación soportada para la versión 0.3.0 es una instalación limpia de dos runners.
+La instalación soportada para el código 0.4.0 comprende tres runners pesados con Docker CI aislado y un cuarto runner Gate sin Docker-in-Docker.
 
 Siga el procedimiento completo en:
 

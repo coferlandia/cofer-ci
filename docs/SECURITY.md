@@ -8,7 +8,8 @@ Use los runners sólo con repositorios y workflows confiables.
 
 ## Controles implementados
 
-- dos daemons Docker CI independientes;
+- tres daemons Docker CI independientes para los runners pesados;
+- un runner Gate sin Docker-in-Docker;
 - ninguna montura de `/var/run/docker.sock` del host;
 - TLS interno runner↔Docker CI;
 - redes separadas por runner;

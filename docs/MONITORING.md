@@ -11,13 +11,13 @@ sudo systemctl status coferlandia-ci-watchdog.timer --no-pager
 Comprueba:
 
 - Docker del host;
-- `runner-01` y `runner-02`;
-- `docker-ci-01` y `docker-ci-02`;
+- `runner-01`, `runner-02`, `runner-03` y `runner-04` (Gate);
+- `docker-ci-01`, `docker-ci-02` y `docker-ci-03`;
 - healthchecks y reinicios;
-- respuesta de ambos Docker CI;
+- respuesta de los tres Docker CI;
 - filesystem raíz;
 - filesystem CI;
-- estado remoto opcional de ambos runners.
+- estado remoto opcional de los cuatro runners.
 
 La salud local y la disponibilidad remota son controles distintos. Un contenedor puede estar `healthy` porque `Runner.Listener` está vivo y, al mismo tiempo, GitHub puede reportar ese runner como `offline`. El watchdog usa el estado remoto para detectar ese caso.
 
@@ -48,6 +48,8 @@ Los nombres remotos se toman de `.env`.
 
 Para que el watchdog pueda detectar y recuperar un runner remotamente `offline`, `GITHUB_MONITOR_TOKEN` debe permitir consultar los self-hosted runners del scope configurado.
 
+El watchdog utiliza el valor completo como token Bearer, sin asumir longitud ni formato. Los tokens de instalación de GitHub Apps emitidos desde octubre de 2026 pueden superar los 500 caracteres. El archivo de monitoreo debe conservar permisos `0600`; si se utiliza un token de instalación de una hora, su renovación debe resolverse fuera de este script.
+
 ## Self-healing de listeners
 
 Valores por defecto:
@@ -61,8 +63,8 @@ La política es deliberadamente conservadora:
 
 1. un primer chequeo `offline` sólo incrementa el contador del runner;
 2. al alcanzar la cantidad configurada de chequeos consecutivos, el watchdog verifica que el contenedor esté `running`, `healthy` y sin `Runner.Worker` activo;
-3. si cumple esas condiciones, reinicia únicamente `runner-01` o `runner-02` según corresponda;
-4. nunca reinicia `docker-ci-01` o `docker-ci-02` por un problema exclusivamente remoto del listener;
+3. si cumple esas condiciones, reinicia únicamente el listener afectado (`runner-01` a `runner-04`);
+4. nunca reinicia los `docker-ci-01` a `docker-ci-03` por un problema exclusivamente remoto del listener;
 5. después de un reinicio automático queda una recuperación pendiente; mientras el runner siga `offline` no se realizan reinicios repetidos;
 6. cuando GitHub vuelve a reportarlo `online`, se limpia el incidente y queda habilitada una futura recuperación, respetando el cooldown.
 
@@ -85,4 +87,4 @@ Para incluir el archivo de monitoreo protegido con `chmod 600`, ejecute:
 sudo ./scripts/status.sh
 ```
 
-Muestra los cuatro contenedores, recursos, disco, almacenamiento interno de cada daemon y, si `GITHUB_MONITOR_TOKEN` está configurado, el estado remoto de ambos runners.
+Muestra los siete contenedores, recursos, disco, almacenamiento interno de cada daemon y, si `GITHUB_MONITOR_TOKEN` está configurado, el estado remoto de los cuatro runners.

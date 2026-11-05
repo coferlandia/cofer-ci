@@ -1,5 +1,7 @@
 # Manual completo de instalación limpia
 
+> **Guía histórica (0.3.1).** La instalación vigente del código 0.4.0 está documentada en [docs/CLEAN_INSTALL.md](docs/CLEAN_INSTALL.md): cuatro runners (tres pesados + Gate), tres Docker CI, 80 GiB de almacenamiento y limpieza horaria. Utilice esa guía para instalaciones nuevas; los pasos siguientes se conservan como referencia de la topología anterior.
+
 Este procedimiento parte de una VM sin una instalación previa de Coferlandia CI. No es un manual de actualización. Para instalaciones existentes use [docs/UPGRADE.md](docs/UPGRADE.md).
 
 ## 1. Resultado esperado

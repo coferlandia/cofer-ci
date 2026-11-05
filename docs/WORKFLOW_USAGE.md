@@ -8,7 +8,7 @@ runs-on: [self-hosted, coferlandia-ci]
 
 GitHub selecciona cualquiera de los tres runners pesados libres. No es necesario conocer cuál ejecutará el job.
 
-## Dos jobs simultáneos
+## Jobs pesados simultáneos
 
 ```yaml
 jobs:
@@ -21,20 +21,25 @@ jobs:
     runs-on: [self-hosted, coferlandia-ci]
     steps:
       - run: ./scripts/test-b.sh
+
+  test-c:
+    runs-on: [self-hosted, coferlandia-ci]
+    steps:
+      - run: ./scripts/test-c.sh
 ```
 
-Si ambos están listos al mismo tiempo, cada runner recibe uno.
+Si los tres están listos al mismo tiempo, cada runner pesado recibe uno.
 
 ## Matriz paralela
 
 ```yaml
 strategy:
-  max-parallel: 2
+  max-parallel: 3
   matrix:
-    shard: [1, 2]
+    shard: [1, 2, 3]
 ```
 
-Un tercer elemento de matriz quedará en cola hasta que termine uno de los dos primeros.
+Un cuarto elemento de matriz quedará en cola hasta que termine uno de los tres primeros.
 
 ## Gate / agregación liviana
 
@@ -71,7 +76,7 @@ Para caché portable entre runners, use `actions/cache` cuando sea apropiado.
 
 ## Concurrency de GitHub
 
-La capacidad física es dos, pero cada workflow puede limitarse:
+La capacidad física es de tres jobs pesados simultáneos más un Gate liviano independiente, pero cada workflow puede limitarse:
 
 ```yaml
 concurrency:
@@ -87,4 +92,4 @@ Defina límites explícitos:
 timeout-minutes: 30
 ```
 
-Esto evita ocupar indefinidamente uno de los dos slots.
+Esto evita ocupar indefinidamente uno de los tres slots pesados o el Gate.
