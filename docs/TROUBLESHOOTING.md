@@ -37,14 +37,14 @@ docker exec coferlandia-ci-runner-01 sh -lc '
 
 Si `memory.events` muestra `oom_kill 1` o más, o el kernel informa `Memory cgroup out of memory`, el límite del contenedor fue alcanzado aunque `free -h` muestre memoria disponible en el host. No trate ese caso como un test fallido.
 
-La línea base actual usa `RUNNER_MEMORY=5g`. Después de modificar `.env`, valide y recree sólo los listeners:
+La línea base actual usa `RUNNER_MEMORY=5g` para los tres runners pesados. Después de modificar `.env`, espere a que los jobs terminen, valide y recree sólo los listeners pesados:
 
 ```bash
 docker compose config | grep -A8 -B2 'mem_limit'
-docker compose up -d --force-recreate runner-01 runner-02
+docker compose up -d --force-recreate runner-01 runner-02 runner-03
 ```
 
-Confirme que ambos vuelvan a `healthy` y que `memory.max` refleje el nuevo límite antes de reejecutar el workflow.
+Confirme que los tres vuelvan a `healthy` y que `memory.max` refleje el nuevo límite antes de reejecutar el workflow. El Gate tiene su propio límite (`GATE_RUNNER_MEMORY`).
 
 ## Un runner aparece offline
 
@@ -62,6 +62,8 @@ Logs:
 ```bash
 docker compose logs --tail=300 runner-01
 docker compose logs --tail=300 runner-02
+docker compose logs --tail=300 runner-03
+docker compose logs --tail=300 runner-04
 ```
 
 Diagnóstico local:
@@ -69,6 +71,8 @@ Diagnóstico local:
 ```bash
 sudo ls -lah /srv/coferlandia-ci/runner-01/_diag
 sudo ls -lah /srv/coferlandia-ci/runner-02/_diag
+sudo ls -lah /srv/coferlandia-ci/runner-03/_diag
+sudo ls -lah /srv/coferlandia-ci/runner-04/_diag
 ```
 
 Si aparece un timeout como:
@@ -100,6 +104,7 @@ Si el self-healing no está configurado o se requiere recuperación manual:
 docker compose restart runner-01
 # o
 docker compose restart runner-02
+# o runner-03 / runner-04, sólo el listener afectado
 ```
 
 No reinicie su Docker-in-Docker si el daemon está sano y el problema está limitado a la sesión GitHub del listener.
@@ -111,7 +116,7 @@ docker compose logs --tail=300 docker-ci-01
 docker compose exec docker-ci-01 docker info
 ```
 
-Para la segunda instancia, reemplazar `01` por `02`.
+Para las demás instancias pesadas, reemplazar `01` por `02` o `03`. El Gate (`runner-04`) no tiene Docker CI.
 
 Reinicio controlado de un par:
 
@@ -143,22 +148,21 @@ Compruebe:
 - que al menos un runner esté `online` e `idle` en GitHub, no sólo `healthy` en Docker;
 - que `runs-on` incluya `coferlandia-ci`;
 - que el runner group permita el repositorio;
-- que los dos slots no estén ocupados.
+- que los tres slots pesados no estén ocupados, o el Gate si el job usa `coferlandia-ci-gate`.
 
-Un tercer job en cola es comportamiento normal.
+Un cuarto job pesado en cola es comportamiento normal. Un job Gate usa su listener exclusivo y no compite por los tres slots pesados.
 
-Si todos los jobs compatibles quedan `queued` y ambos contenedores locales están `healthy`, consulte explícitamente la API de runners. Si ambos aparecen `offline`, el problema está en la disponibilidad remota de los listeners y no en las labels del workflow.
+Si todos los jobs compatibles quedan `queued` y los contenedores locales están `healthy`, consulte explícitamente la API de runners. Si GitHub los reporta `offline`, el problema está en la disponibilidad remota de los listeners y no necesariamente en las etiquetas del workflow.
 
 ## Error de permisos
 
 ```bash
-sudo chown -R 1001:123 \
-  /srv/coferlandia-ci/runner-01 \
-  /srv/coferlandia-ci/work-01 \
-  /srv/coferlandia-ci/cache-01 \
-  /srv/coferlandia-ci/runner-02 \
-  /srv/coferlandia-ci/work-02 \
-  /srv/coferlandia-ci/cache-02
+for index in 01 02 03 04; do
+  sudo chown -R 1001:123 \
+    "/srv/coferlandia-ci/runner-${index}" \
+    "/srv/coferlandia-ci/work-${index}" \
+    "/srv/coferlandia-ci/cache-${index}"
+done
 ```
 
 ## No space left on device
@@ -174,9 +178,10 @@ Marcadores de pausa:
 ```text
 /srv/coferlandia-ci/.runner-01-paused-disk
 /srv/coferlandia-ci/.runner-02-paused-disk
+/srv/coferlandia-ci/.runner-03-paused-disk
 ```
 
-Después de liberar espacio, el cleanup reinicia las instancias cuando el uso baja del umbral de recuperación.
+Después de liberar espacio, el cleanup reinicia los runners pesados pausados cuando el uso baja del umbral de recuperación. El Gate no utiliza este mecanismo de pausa.
 
 ## El directorio operativo no coincide con los contenedores
 

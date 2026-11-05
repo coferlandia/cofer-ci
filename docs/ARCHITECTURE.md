@@ -64,13 +64,15 @@ DIND_CPUS=0.75
 DIND_MEMORY=4g
 DIND_PIDS_LIMIT=1024
 DIND_SHM_SIZE=512m
+GATE_RUNNER_CPUS=0.10
+GATE_RUNNER_MEMORY=768m
 ```
 
-Máximo agregado aproximado del stack, considerando los límites de memoria y CPU de los seis contenedores:
+Máximo agregado aproximado del stack, considerando los límites de memoria y CPU de los siete contenedores:
 
-- CPU: 3,75 CPU lógicas;
-- memoria: 27 GiB;
-- almacenamiento: 45 GiB compartidos como techo en instalaciones nuevas.
+- CPU: 3,85 CPU lógicas;
+- memoria: 27,75 GiB;
+- almacenamiento: 80 GiB compartidos como techo en instalaciones nuevas.
 
 Los límites son máximos, no reservas. Antes de habilitar tres jobs pesados simultáneos en una VM compartida, validar capacidad real del host y conservar margen para el sistema operativo y el stack productivo.
 
@@ -81,12 +83,15 @@ Los límites son máximos, no reservas. Antes de habilitar tres jobs pesados sim
 ├── runner-01/
 ├── runner-02/
 ├── runner-03/
+├── runner-04/
 ├── work-01/
 ├── work-02/
 ├── work-03/
+├── work-04/
 ├── cache-01/
 ├── cache-02/
 ├── cache-03/
+├── cache-04/
 ├── docker-01/
 ├── docker-02/
 ├── docker-03/

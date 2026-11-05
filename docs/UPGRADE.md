@@ -1,6 +1,6 @@
 # Actualización de una instalación existente
 
-Este procedimiento cubre una actualización desde 0.2.x/0.3.x y, en particular, la migración desde la topología de dos runners a la topología 0.4.x de tres runners.
+Este procedimiento cubre la actualización desde 0.2.x/0.3.x hasta la topología 0.4.x de tres runners pesados y un Gate liviano independiente. Las referencias a topologías anteriores se mantienen sólo para identificar y migrar instalaciones existentes.
 
 ## Objetivo
 
@@ -30,6 +30,7 @@ También puede comprobar workers locales de la topología 0.3.x:
 docker exec coferlandia-ci-runner-01 pgrep -af 'Runner.Worker' || true
 docker exec coferlandia-ci-runner-02 pgrep -af 'Runner.Worker' || true
 docker exec coferlandia-ci-runner-03 pgrep -af 'Runner.Worker' || true
+docker exec coferlandia-ci-runner-04 pgrep -af 'Runner.Worker' || true
 ```
 
 ## 2. Diagnosticar el estado instalado antes de usar Compose
@@ -109,6 +110,7 @@ docker-ci-02
 runner-02
 docker-ci-03
 runner-03
+runner-04
 ```
 
 ## 5. Recuperar y revisar `.env`
@@ -126,6 +128,8 @@ RUNNER_URL=https://github.com/coferlandia
 RUNNER_01_NAME=coferlandia-ci-01
 RUNNER_02_NAME=coferlandia-ci-02
 RUNNER_03_NAME=coferlandia-ci-03
+RUNNER_04_NAME=coferlandia-ci-gate
+RUNNER_04_LABELS=coferlandia-ci-gate
 RUNNER_LABELS=coferlandia-ci,docker
 RUNNER_GROUP=Default
 CI_STORAGE_ROOT=/srv/coferlandia-ci
@@ -173,7 +177,7 @@ Compruebe primero qué contenedores existen:
 docker compose ps -a
 ```
 
-Si la instalación existente tiene 01/02 registrados, primero amplíe el filesystem CI si corresponde, ejecute `sudo ./scripts/install-host.sh` para crear la estructura 03 y luego registre sólo el runner faltante con `./scripts/register-runners.sh`. Después reconcilie el stack sin borrar almacenamiento:
+Si la instalación existente tiene 01/02 registrados, primero amplíe el filesystem CI si corresponde, ejecute `sudo ./scripts/install-host.sh` para crear las estructuras 03 y 04 y registre sólo los runners faltantes con `./scripts/register-runners.sh`. Después reconcilie el stack sin borrar almacenamiento:
 
 ```bash
 docker compose up -d --build
@@ -181,7 +185,7 @@ docker compose up -d --build
 
 ### 6.2 Instalación 0.2.x pura
 
-Si no existen los directorios persistentes independientes de 0.3.x, no fuerce la reutilización del registro único antiguo. Prepare la estructura nueva y registre ambos runners con los scripts actuales:
+Si no existen los directorios persistentes independientes de 0.3.x, no fuerce la reutilización del registro único antiguo. Prepare la estructura nueva y registre los cuatro runners con los scripts actuales:
 
 ```bash
 sudo ./scripts/install-host.sh
@@ -245,7 +249,7 @@ gh api /orgs/coferlandia/actions/runners \
   --jq '.runners[] | select(.name | startswith("coferlandia-ci")) | "\(.name) status=\(.status) busy=\(.busy) labels=\([.labels[].name] | join(","))"'
 ```
 
-Los tres runners deben aparecer `online` y, sin jobs activos, `busy=false`.
+Los cuatro runners deben aparecer `online` y, sin jobs activos, `busy=false`.
 
 ## 10. Prueba de reboot
 
@@ -263,7 +267,7 @@ sudo ./scripts/status.sh
 sudo ./scripts/verify-installation.sh
 ```
 
-Los tres runners deben regresar `online/Idle` sin re-registro manual.
+Los cuatro runners deben regresar `online/Idle` sin re-registro manual.
 
 ## 11. Rollback
 
@@ -281,19 +285,19 @@ No restaure una versión cuyo `compose.yml` describa `runner`/`docker-ci` único
 La actualización queda cerrada cuando:
 
 - el directorio operativo y `VERSION` corresponden a la misma versión;
-- `docker compose config --services` muestra los seis servicios;
-- los seis contenedores están healthy;
-- los tres runners están `online` en GitHub;
+- `docker compose config --services` muestra los siete servicios;
+- los siete contenedores están healthy;
+- los cuatro runners están `online` en GitHub;
 - watchdog y cleanup están habilitados;
 - el watchdog tiene monitoreo remoto configurado;
-- un reboot completo recupera ambos runners sin intervención manual.
+- un reboot completo recupera los cuatro runners sin intervención manual.
 
 
-## Ampliación: runner Gate dedicado
+## Comprobación específica del runner Gate
 
-A partir de esta topología se agrega `runner-04` como listener liviano exclusivo para jobs de agregación/Gate. No tiene Docker-in-Docker y usa la etiqueta `coferlandia-ci-gate`.
+La topología vigente incluye `runner-04` como listener liviano exclusivo para jobs de agregación/Gate. No tiene Docker-in-Docker y usa la etiqueta `coferlandia-ci-gate`.
 
-Después de actualizar los archivos:
+Si el Gate aún no está registrado en una instalación parcialmente migrada, complete únicamente el registro faltante:
 
 ```bash
 sudo ./scripts/install-host.sh
@@ -302,4 +306,4 @@ docker compose up -d runner-04
 sudo ./scripts/verify-installation.sh
 ```
 
-En GitHub deben quedar visibles tres runners pesados con `coferlandia-ci,docker` y un cuarto runner con `coferlandia-ci-gate`. Los workflows de Gate sólo deben usar este último label.
+En GitHub deben quedar visibles tres runners pesados con `coferlandia-ci,docker` y un cuarto runner con `coferlandia-ci-gate`. Los workflows de Gate sólo deben usar esta última etiqueta.
