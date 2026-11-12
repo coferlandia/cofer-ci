@@ -35,6 +35,9 @@ La separación de los daemons es deliberada. Los hooks pueden eliminar contenedo
 - CPU, memoria, PIDs, logs y almacenamiento tienen límites.
 - El filesystem de CI tiene tamaño máximo configurable.
 - Watchdog y limpieza corren fuera de los runners.
+- La limpieza usa leases por runner, estado fail-closed (`idle/busy/unknown`) y presupuestos para workspace, caches y DinD.
+- Los temporales de jobs viven en `/cache/tmp` dentro del filesystem CI, no en la capa escribible del listener.
+- El loopback sparse devuelve bloques al host mediante `fstrim` periódico sólo con mount verificado y runners idle.
 - El stack puede seguir funcionando mientras quede al menos un runner disponible.
 - El watchdog puede distinguir un listener localmente sano de un runner remotamente `offline` y aplicar self-healing seguro cuando el monitoreo GitHub está configurado.
 
@@ -52,6 +55,7 @@ sudo ./scripts/status.sh
 ./scripts/stop.sh
 ./scripts/restart.sh
 docker compose logs --tail=200 -f
+sudo ./scripts/cleanup.sh --dry-run
 sudo ./scripts/cleanup.sh
 ```
 
