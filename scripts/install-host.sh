@@ -24,7 +24,7 @@ set +a
 : "${CI_STORAGE_IMAGE:=/var/lib/coferlandia-ci.img}"
 : "${CI_STORAGE_SIZE:=80G}"
 
-for cmd in truncate mkfs.ext4 mount findmnt numfmt; do
+for cmd in truncate mkfs.ext4 mount findmnt losetup numfmt flock fstrim readlink; do
   command -v "$cmd" >/dev/null 2>&1 || {
     echo "Falta ${cmd}. Instale util-linux y e2fsprogs." >&2
     exit 1
