@@ -51,6 +51,13 @@ else
   printf '%-24s %s\n' 'Filesystem CI:' 'NO MONTADO'
 fi
 
+if [[ -f "${CI_STORAGE_IMAGE:-}" ]]; then
+  printf '%-24s ' 'CI image physical:'
+  du -h "$CI_STORAGE_IMAGE" | awk '{print $1}'
+  printf '%-24s ' 'CI image apparent:'
+  du -h --apparent-size "$CI_STORAGE_IMAGE" | awk '{print $1}'
+fi
+
 printf '\nRecursos actuales:\n'
 if (( ${#container_ids[@]} > 0 )); then
   docker stats --no-stream     --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.PIDs}}'     "${container_ids[@]}" 2>/dev/null || true
