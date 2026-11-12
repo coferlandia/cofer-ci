@@ -25,6 +25,25 @@ clear_cache_dir() {
   }
 }
 
+workspace_policy_values() {
+  local budget retention
+  budget="$(gib_to_bytes "${WORKSPACE_MAX_GIB_PER_RUNNER:-4}" 2>/dev/null || true)"
+  retention="${WORKSPACE_IDLE_RETENTION_HOURS:-$((${WORKSPACE_RETENTION_DAYS:-2} * 24))}"
+  [[ "$budget" =~ ^[0-9]+$ && "$retention" =~ ^[0-9]+$ ]] || return 1
+  printf '%s %s\n' "$budget" "$retention"
+}
+
+apply_workspace_policy() {
+  local runner="$1" work="$2" force="${3:-false}" values budget retention
+  values="$(workspace_policy_values)" || {
+    warn "${runner}: configuración de workspace inválida; se omite retención"
+    return 0
+  }
+  read -r budget retention <<<"$values"
+  cleanup_idle_workspaces "$work" "$budget" "$retention" "$force" ||
+    warn "${runner}: no se pudo aplicar política de workspace"
+}
+
 prune_dind_normal() {
   local dind="$1"
 
@@ -90,17 +109,15 @@ cleanup_heavy_runner_locked() {
     warn "${runner}: cache fuera del storage verificado; se omite"
   fi
 
+  # Workspaces/checkouts are regenerable. Reclaim them while idle based on
+  # their own age/size, independently of the global pressure threshold.
+  apply_workspace_policy "$runner" "$work" false
+
   usage="$(storage_usage_percent)"
   if (( usage >= ${DISK_AGGRESSIVE_PERCENT:-82} )); then
     log "${runner}: umbral agresivo (${usage}%). Reduciendo cachés y workspace."
     prune_dind_aggressive "$dind"
-
-    if safe_path_in_ci_storage "$work"; then
-      find "$work"         -mindepth 1 -maxdepth 1         ! -name '_actions' ! -name '_tool' ! -name '_temp' ! -name '_update' ! -name '_PipelineMapping'         -mtime "+${WORKSPACE_RETENTION_DAYS:-2}"         -exec rm -rf -- {} + 2>/dev/null || true
-    else
-      warn "${runner}: workspace fuera del storage verificado; se omite"
-    fi
-
+    apply_workspace_policy "$runner" "$work" true
     clear_cache_dir "$cache/npm"
     clear_cache_dir "$cache/pip"
     clear_cache_dir "$cache/nuget"
@@ -158,11 +175,11 @@ cleanup_gate_locked() {
     find "$cache" -type f       -mtime "+${PACKAGE_CACHE_RETENTION_DAYS:-7}"       -delete 2>/dev/null || true
   fi
 
+  apply_workspace_policy "$runner" "$work" false
+
   usage="$(storage_usage_percent)"
   if (( usage >= ${DISK_AGGRESSIVE_PERCENT:-82} )); then
-    if safe_path_in_ci_storage "$work"; then
-      find "$work"         -mindepth 1 -maxdepth 1         ! -name '_actions' ! -name '_tool' ! -name '_temp' ! -name '_update' ! -name '_PipelineMapping'         -mtime "+${WORKSPACE_RETENTION_DAYS:-2}"         -exec rm -rf -- {} + 2>/dev/null || true
-    fi
+    apply_workspace_policy "$runner" "$work" true
     clear_cache_dir "$cache/npm"
     clear_cache_dir "$cache/pip"
     clear_cache_dir "$cache/nuget"
