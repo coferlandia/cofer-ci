@@ -10,6 +10,10 @@ storage_policy_log() {
   fi
 }
 
+storage_policy_dry_run() {
+  [[ "${CLEANUP_DRY_RUN:-false}" == true ]]
+}
+
 gib_to_bytes() {
   local gib="${1:-}"
   [[ "$gib" =~ ^[1-9][0-9]*$ ]] || return 1
@@ -58,7 +62,11 @@ cleanup_idle_workspaces() {
     if [[ "$force" == true ]] || (( total > budget_bytes )) || (( age >= retention_hours )); then
       size="$(path_size_bytes "$candidate")"
       storage_policy_log "workspace reclaim: ${candidate} size=${size}B age=${age}h force=${force}"
-      safe_remove_path "$candidate" || return 1
+      if storage_policy_dry_run; then
+        safe_remove_path "$candidate" --dry-run || return 1
+      else
+        safe_remove_path "$candidate" || return 1
+      fi
       if [[ "$size" =~ ^[0-9]+$ ]] && (( size <= total )); then
         total=$((total - size))
       fi
@@ -88,13 +96,25 @@ cleanup_idle_cache_budget() {
   if (( package_total > package_budget )); then
     storage_policy_log "package cache reclaim: ${cache} size=${package_total}B budget=${package_budget}B"
     for dir in "$cache/npm" "$cache/pip" "$cache/nuget"; do
-      [[ -d "$dir" ]] && safe_clean_dir "$dir"
+      if [[ -d "$dir" ]]; then
+        if storage_policy_dry_run; then
+          safe_clean_dir "$dir" --dry-run
+        else
+          safe_clean_dir "$dir"
+        fi
+      fi
     done
   fi
 
   tool_size="$(path_size_bytes "$cache/toolcache")"
   if [[ "$tool_size" =~ ^[0-9]+$ ]] && (( tool_size > tool_budget )); then
     storage_policy_log "toolcache reclaim: ${cache}/toolcache size=${tool_size}B budget=${tool_budget}B"
-    [[ -d "$cache/toolcache" ]] && safe_clean_dir "$cache/toolcache"
+    if [[ -d "$cache/toolcache" ]]; then
+      if storage_policy_dry_run; then
+        safe_clean_dir "$cache/toolcache" --dry-run
+      else
+        safe_clean_dir "$cache/toolcache"
+      fi
+    fi
   fi
 }
