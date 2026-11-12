@@ -49,23 +49,28 @@ sudo ./scripts/cleanup.sh
 
 El timer ejecuta el script aproximadamente una vez por hora. Cada runner idle se procesa independientemente; un runner busy/unknown o con lease ocupado se salta sin afectar a los demás.
 
-La política normal, incluso por debajo del umbral global de 82%, limita datos regenerables por runner:
+En operación normal (filesystem CI por debajo de `DISK_WARN_PERCENT`) no se aplican presupuestos por tamaño. Se conserva el estado reciente aunque sea grande y sólo actúan retenciones conservadoras por antigüedad y limpieza de temporales/objetos vencidos.
+
+Cuando el filesystem CI alcanza el umbral de advertencia, los siguientes valores pasan a ser **soft budgets de reclaim para runners idle**, no límites de ejecución:
 
 ```env
 PACKAGE_CACHE_RETENTION_DAYS=7
-PACKAGE_CACHE_MAX_GIB_PER_RUNNER=2
-TOOLCACHE_MAX_GIB_PER_RUNNER=4
-WORKSPACE_IDLE_RETENTION_HOURS=24
-WORKSPACE_MAX_GIB_PER_RUNNER=4
-DIND_MAX_GIB_PER_RUNNER=6
+PACKAGE_CACHE_MAX_GIB_PER_RUNNER=4
+TOOLCACHE_MAX_GIB_PER_RUNNER=8
+WORKSPACE_IDLE_RETENTION_HOURS=48
+WORKSPACE_MAX_GIB_PER_RUNNER=12
+DIND_MAX_GIB_PER_RUNNER=12
+BUILDKIT_CACHE_KEEP=6GB
 ```
 
-- npm/pip/nuget vencidos se depuran por edad; si su conjunto supera el presupuesto, se vacía mientras el runner está idle;
-- `toolcache` se conserva hasta su presupuesto, salvo presión de disco;
-- los workspaces/checkouts se eliminan completos cuando están vencidos o el conjunto regenerable supera el presupuesto; no se manipulan packs Git individualmente;
-- un DinD que supera su presupuesto recibe reclaim agresivo de objetos no usados cuando su runner está idle.
+- un workflow activo puede superar cualquiera de estos tamaños; nunca se interrumpe ni se limpia por presupuesto;
+- npm/pip/nuget vencidos se depuran por edad aun sin presión;
+- workspaces vencidos se eliminan por antigüedad aun sin presión, pero un workspace reciente grande se conserva mientras haya capacidad;
+- desde 75% se usan los soft budgets para reclamar estado regenerable de runners idle;
+- desde 82% se aplica reclaim agresivo; desde 90% se mantiene la protección de emergencia;
+- no se manipulan packs Git individualmente: cuando corresponde reclaim se elimina el checkout regenerable completo.
 
-Los valores son defaults operativos, no reservas de disco.
+Los valores son objetivos de mantenimiento bajo presión, no capacidad máxima de un workflow.
 
 ## Umbrales de presión
 
@@ -78,8 +83,8 @@ RUNNER_CACHE_PRESSURE_PERCENT=78
 RUNNER_CACHE_EMERGENCY_PERCENT=88
 ```
 
-- 75%: advertencia.
-- 82%: reclaim agresivo de workspace/cache/DinD de runners idle.
+- 75%: advertencia y activación de soft budgets para runners idle.
+- 82%: reclaim agresivo de workspace/cache/DinD de runners idle, independientemente de los soft budgets.
 - 90%: después de reclaim, un listener pesado idle puede pausarse para proteger la VM.
 - 70%: recuperación automática de listeners pausados por disco.
 - 78%: hooks pre/post-job pueden purgar npm/pip/nuget.
