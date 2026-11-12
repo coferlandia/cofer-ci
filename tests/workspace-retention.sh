@@ -32,6 +32,17 @@ cleanup_idle_workspaces "$CI_STORAGE_ROOT/work-01" 10485760 24 false
 [[ -d "$CI_STORAGE_ROOT/work-01/small" ]] || fail "recent small workspace was removed"
 pass "recent workspace under budget is retained"
 
+mkdir -p "$CI_STORAGE_ROOT/work-01/recent-heavy/recent-heavy/.git/objects/pack"
+dd if=/dev/zero of="$CI_STORAGE_ROOT/work-01/recent-heavy/recent-heavy/.git/objects/pack/pack-heavy" bs=2048 count=1 status=none
+cleanup_expired_idle_workspaces "$CI_STORAGE_ROOT/work-01" 168
+[[ -d "$CI_STORAGE_ROOT/work-01/recent-heavy" ]] || fail "recent heavy workspace was removed by age-only retention"
+pass "age-only retention preserves recent heavy workspace regardless of size"
+
+touch -d "8 days ago" "$CI_STORAGE_ROOT/work-01/recent-heavy"
+cleanup_expired_idle_workspaces "$CI_STORAGE_ROOT/work-01" 168
+[[ ! -e "$CI_STORAGE_ROOT/work-01/recent-heavy" ]] || fail "expired heavy workspace was retained by age-only policy"
+pass "age-only retention removes workspace after seven days"
+
 mkdir -p "$CI_STORAGE_ROOT/work-01/old/old"
 printf x > "$CI_STORAGE_ROOT/work-01/old/old/file"
 touch -d "2 days ago" "$CI_STORAGE_ROOT/work-01/old"
