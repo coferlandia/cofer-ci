@@ -48,6 +48,16 @@ clear_cache_dir() {
   fi
 }
 
+runner_idle_now() {
+  local runner="$1" activity
+  activity="$(runner_activity "$runner")"
+  if [[ "$activity" != idle ]]; then
+    log "${runner}: actividad=${activity}; operación destructiva omitida"
+    return 1
+  fi
+  return 0
+}
+
 workspace_policy_values() {
   local budget retention
   budget="$(gib_to_bytes "${WORKSPACE_MAX_GIB_PER_RUNNER:-4}" 2>/dev/null || true)"
@@ -58,6 +68,7 @@ workspace_policy_values() {
 
 apply_workspace_policy() {
   local runner="$1" work="$2" force="${3:-false}" values budget retention
+  runner_idle_now "$runner" || return 0
   values="$(workspace_policy_values)" || {
     warn "${runner}: configuración de workspace inválida; se omite retención"
     return 0
@@ -69,6 +80,7 @@ apply_workspace_policy() {
 
 apply_cache_budget() {
   local runner="$1" cache="$2" package_budget tool_budget
+  runner_idle_now "$runner" || return 0
   package_budget="$(gib_to_bytes "${PACKAGE_CACHE_MAX_GIB_PER_RUNNER:-2}" 2>/dev/null || true)"
   tool_budget="$(gib_to_bytes "${TOOLCACHE_MAX_GIB_PER_RUNNER:-4}" 2>/dev/null || true)"
 
@@ -82,6 +94,7 @@ apply_cache_budget() {
 
 apply_dind_budget() {
   local runner="$1" index="$2" dind="$3" budget size path
+  runner_idle_now "$runner" || return 0
   path="${CI_STORAGE_ROOT}/docker-${index}"
   budget="$(gib_to_bytes "${DIND_MAX_GIB_PER_RUNNER:-6}" 2>/dev/null || true)"
   [[ "$budget" =~ ^[0-9]+$ ]] || {
