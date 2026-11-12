@@ -44,7 +44,11 @@ ci_trim_is_due() {
 
 all_runners_idle_for_storage_maintenance() {
   local service activity
-  for service in "${RUNNER_SERVICES[@]:-runner-01 runner-02 runner-03 runner-04}"; do
+  local -a services=(runner-01 runner-02 runner-03 runner-04)
+  if declare -p RUNNER_SERVICES >/dev/null 2>&1 && (( ${#RUNNER_SERVICES[@]} > 0 )); then
+    services=("${RUNNER_SERVICES[@]}")
+  fi
+  for service in "${services[@]}"; do
     activity="$(runner_activity "$service")"
     if [[ "$activity" != idle ]]; then
       loop_maintenance_log "trim omitido: ${service} actividad=${activity}"
