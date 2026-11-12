@@ -21,6 +21,7 @@ grep -q -- '--dry-run' "$ROOT/scripts/cleanup.sh" || fail "cleanup CLI lacks --d
 grep -q 'CLEANUP_DRY_RUN' "$ROOT/scripts/cleanup.sh" || fail "cleanup does not carry dry-run state"
 grep -q 'CLEANUP_DRY_RUN' "$ROOT/scripts/storage-policy.sh" || fail "storage policy ignores dry-run state"
 grep -q 'CLEANUP_DRY_RUN' "$ROOT/scripts/loop-maintenance.sh" || fail "trim maintenance ignores dry-run state"
+grep -q 'dry-run: host Docker ejecutaría image prune' "$ROOT/scripts/cleanup.sh" || fail "host image prune bypasses dry-run contract"
 pass "dry-run state covers host, policy and trim layers"
 
 printf '\ncleanup dry-run tests passed\n'
