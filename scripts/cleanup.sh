@@ -61,7 +61,7 @@ runner_idle_now() {
 workspace_policy_values() {
   local budget retention
   budget="$(gib_to_bytes "${WORKSPACE_MAX_GIB_PER_RUNNER:-12}" 2>/dev/null || true)"
-  retention="${WORKSPACE_IDLE_RETENTION_HOURS:-48}"
+  retention="${WORKSPACE_IDLE_RETENTION_HOURS:-168}"
   [[ "$budget" =~ ^[0-9]+$ && "$retention" =~ ^[0-9]+$ ]] || return 1
   printf '%s %s\n' "$budget" "$retention"
 }
@@ -81,7 +81,7 @@ apply_workspace_policy() {
 apply_workspace_age_retention() {
   local runner="$1" work="$2" retention
   runner_idle_now "$runner" || return 0
-  retention="${WORKSPACE_IDLE_RETENTION_HOURS:-48}"
+  retention="${WORKSPACE_IDLE_RETENTION_HOURS:-168}"
   [[ "$retention" =~ ^[0-9]+$ ]] || {
     warn "${runner}: WORKSPACE_IDLE_RETENTION_HOURS inválido; se omite retención por edad"
     return 0
