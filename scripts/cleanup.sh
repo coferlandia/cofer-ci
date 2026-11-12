@@ -174,20 +174,25 @@ cleanup_heavy_runner_locked() {
   local marker="${CI_STORAGE_ROOT}/.${runner}-paused-disk"
   local activity usage
 
-  activity="$(runner_activity "$runner")"
-  if [[ "$activity" != idle ]]; then
-    log "${runner}: actividad=${activity}; limpieza destructiva omitida"
+  if ! runner_idle_now "$runner"; then
     return 0
   fi
 
   log "${runner}: idle confirmado bajo lease"
-  prune_dind_normal "$dind"
+
+  runner_idle_now "$runner" && prune_dind_normal "$dind"
 
   if safe_path_in_ci_storage "$cache"; then
-    find "$cache" -type f       -mtime "+${PACKAGE_CACHE_RETENTION_DAYS:-7}"       -delete 2>/dev/null || true
+    if runner_idle_now "$runner"; then
+      delete_expired_package_cache "$cache" "${PACKAGE_CACHE_RETENTION_DAYS:-7}" ||
+        warn "${runner}: no se pudo aplicar retención por edad de package cache"
+    fi
   else
     warn "${runner}: cache fuera del storage verificado; se omite"
   fi
+
+  apply_cache_budget "$runner" "$cache"
+  apply_dind_budget "$runner" "$index" "$dind"
 
   # Workspaces/checkouts are regenerable. Reclaim them while idle based on
   # their own age/size, independently of the global pressure threshold.
@@ -195,20 +200,31 @@ cleanup_heavy_runner_locked() {
 
   usage="$(storage_usage_percent)"
   if (( usage >= ${DISK_AGGRESSIVE_PERCENT:-82} )); then
+    if ! runner_idle_now "$runner"; then
+      return 0
+    fi
     log "${runner}: umbral agresivo (${usage}%). Reduciendo cachés y workspace."
     prune_dind_aggressive "$dind"
     apply_workspace_policy "$runner" "$work" true
-    clear_cache_dir "$cache/npm"
-    clear_cache_dir "$cache/pip"
-    clear_cache_dir "$cache/nuget"
+    if runner_idle_now "$runner"; then
+      clear_cache_dir "$cache/npm"
+      clear_cache_dir "$cache/pip"
+      clear_cache_dir "$cache/nuget"
+    fi
   fi
 
   usage="$(storage_usage_percent)"
   if (( usage >= ${DISK_EMERGENCY_PERCENT:-90} )); then
+    if ! runner_idle_now "$runner"; then
+      return 0
+    fi
     warn "${runner}: emergencia de disco (${usage}%). Limpiando toolcache antes de pausar."
     clear_cache_dir "$cache/toolcache"
     usage="$(storage_usage_percent)"
     if (( usage >= ${DISK_EMERGENCY_PERCENT:-90} )); then
+      if ! runner_idle_now "$runner"; then
+        return 0
+      fi
       if [[ "$CLEANUP_DRY_RUN" == true ]]; then
         warn "dry-run: ${runner} sería pausado por emergencia de disco (${usage}%)"
       else
@@ -247,29 +263,36 @@ cleanup_gate_locked() {
   local work="${CI_STORAGE_ROOT}/work-04"
   local activity usage
 
-  activity="$(runner_activity "$runner")"
-  if [[ "$activity" != idle ]]; then
-    log "${runner}: actividad=${activity}; limpieza destructiva omitida"
+  if ! runner_idle_now "$runner"; then
     return 0
   fi
 
   log "${runner}: idle confirmado bajo lease (Gate sin DinD)"
 
   if safe_path_in_ci_storage "$cache"; then
-    find "$cache" -type f       -mtime "+${PACKAGE_CACHE_RETENTION_DAYS:-7}"       -delete 2>/dev/null || true
+    if runner_idle_now "$runner"; then
+      delete_expired_package_cache "$cache" "${PACKAGE_CACHE_RETENTION_DAYS:-7}" ||
+        warn "${runner}: no se pudo aplicar retención por edad de package cache"
+    fi
   fi
 
+  apply_cache_budget "$runner" "$cache"
   apply_workspace_policy "$runner" "$work" false
 
   usage="$(storage_usage_percent)"
   if (( usage >= ${DISK_AGGRESSIVE_PERCENT:-82} )); then
+    if ! runner_idle_now "$runner"; then
+      return 0
+    fi
     apply_workspace_policy "$runner" "$work" true
-    clear_cache_dir "$cache/npm"
-    clear_cache_dir "$cache/pip"
-    clear_cache_dir "$cache/nuget"
+    if runner_idle_now "$runner"; then
+      clear_cache_dir "$cache/npm"
+      clear_cache_dir "$cache/pip"
+      clear_cache_dir "$cache/nuget"
+    fi
 
     usage="$(storage_usage_percent)"
-    if (( usage >= ${DISK_EMERGENCY_PERCENT:-90} )); then
+    if (( usage >= ${DISK_EMERGENCY_PERCENT:-90} )) && runner_idle_now "$runner"; then
       clear_cache_dir "$cache/toolcache"
     fi
   fi
@@ -298,7 +321,13 @@ run_cleanup() {
   log "Limpieza iniciada. Uso=${usage_before}%"
 
   # Safe on the host: Docker will not remove images referenced by running containers.
-  docker image prune -af     --filter 'label=io.coferlandia.ci=true'     --filter "until=${IMAGE_RETENTION_HOURS:-72}h" >/dev/null 2>&1 || true
+  if [[ "$CLEANUP_DRY_RUN" == true ]]; then
+    log "dry-run: host Docker ejecutaría image prune de imágenes CI no referenciadas"
+  else
+    docker image prune -af \
+      --filter 'label=io.coferlandia.ci=true' \
+      --filter "until=${IMAGE_RETENTION_HOURS:-72}h" >/dev/null 2>&1 || true
+  fi
 
   for index in 01 02 03; do
     cleanup_heavy_runner "$index"
