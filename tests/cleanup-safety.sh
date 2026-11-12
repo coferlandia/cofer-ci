@@ -100,7 +100,20 @@ remount_rc=$?
 set -e
 [[ "$remount_rc" -eq 74 ]] || fail "lost mount did not block cleanup (rc=$remount_rc)"
 [[ -f "$CI_STORAGE_ROOT/remount-check/file" ]] || fail "cleanup modified data after mount disappeared"
+rm -f "$CI_STORAGE_ROOT/.cleanup.lock" "$CI_STORAGE_ROOT/cache-01/.cleanup.lock"
+set +e
+with_cleanup_lock true
+global_mount_lock_rc=$?
+with_runner_lease runner-01 true
+runner_mount_lock_rc=$?
+set -e
+[[ "$global_mount_lock_rc" -eq 74 ]] || fail "global lock did not fail closed after mount loss (rc=$global_mount_lock_rc)"
+[[ "$runner_mount_lock_rc" -eq 74 ]] || fail "runner lease did not fail closed after mount loss (rc=$runner_mount_lock_rc)"
+[[ ! -e "$CI_STORAGE_ROOT/.cleanup.lock" && ! -e "$CI_STORAGE_ROOT/cache-01/.cleanup.lock" ]] ||
+  fail "lock files were created on the underlying directory after mount loss"
 MOCK_MOUNTED=true
+pass "locks revalidate mount before creating state"
+
 pass "destructive helper revalidates mount immediately before delete"
 
 mkdir -p "$CI_STORAGE_ROOT/safe"
