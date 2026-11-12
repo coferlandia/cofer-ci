@@ -70,6 +70,7 @@ with_cleanup_lock() {
   local timeout="${CLEANUP_LOCK_TIMEOUT_SECONDS:-0}" lock_file fd rc
 
   [[ -n "${CI_STORAGE_ROOT:-}" && -d "$CI_STORAGE_ROOT" ]] || return 78
+  ci_storage_verified || return 74
   lock_file="$CI_STORAGE_ROOT/.cleanup.lock"
 
   exec {fd}>"$lock_file"
@@ -92,6 +93,7 @@ with_runner_lease() {
   shift || true
 
   [[ -n "$service" ]] || return 78
+  ci_storage_verified || return 74
   index="$(runner_index "$service")"
   cache="$CI_STORAGE_ROOT/cache-$index"
   [[ -d "$cache" ]] || return 78
