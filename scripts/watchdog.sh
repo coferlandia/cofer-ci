@@ -106,16 +106,25 @@ elif (( host_usage >= ${HOST_DISK_WARN_PERCENT:-85} )); then
   issues+=("Filesystem host / alto: ${host_usage}%")
 fi
 
+ci_usage_text="n/d"
 if ! mountpoint -q "${CI_STORAGE_ROOT}"; then
   issues+=("Filesystem CI no montado: ${CI_STORAGE_ROOT}")
 else
   usage="$(storage_usage_percent)"
+  ci_usage_text="${usage}%"
   if (( usage >= ${DISK_EMERGENCY_PERCENT:-90} )); then
     issues+=("Almacenamiento CI crítico: ${usage}%")
   elif (( usage >= ${DISK_WARN_PERCENT:-75} )); then
     issues+=("Almacenamiento CI alto: ${usage}%")
   fi
 fi
+
+image_physical="n/d"
+if [[ -f "${CI_STORAGE_IMAGE:-}" ]]; then
+  image_physical="$(du -h "$CI_STORAGE_IMAGE" 2>/dev/null | awk '{print $1}' || true)"
+  [[ -n "$image_physical" ]] || image_physical="n/d"
+fi
+log "Storage telemetry: host=${host_usage}% ci=${ci_usage_text} image_physical=${image_physical}"
 
 now="$(date +%s)"
 
