@@ -10,6 +10,20 @@ source "${SCRIPT_DIR}/storage-policy.sh"
 # shellcheck source=loop-maintenance.sh
 source "${SCRIPT_DIR}/loop-maintenance.sh"
 
+CLEANUP_DRY_RUN=false
+case "${1:-}" in
+  "")
+    ;;
+  --dry-run)
+    CLEANUP_DRY_RUN=true
+    ;;
+  *)
+    printf 'Uso: %s [--dry-run]\n' "$0" >&2
+    exit 64
+    ;;
+esac
+export CLEANUP_DRY_RUN
+
 load_env
 for command in docker mountpoint findmnt losetup flock readlink; do
   require_command "$command"
@@ -21,10 +35,17 @@ ci_storage_verified ||
 clear_cache_dir() {
   local dir="$1"
   [[ -d "$dir" ]] || return 0
-  safe_clean_dir "$dir" || {
-    warn "Se rechazó la limpieza de una ruta no segura: $dir"
-    return 1
-  }
+  if [[ "$CLEANUP_DRY_RUN" == true ]]; then
+    safe_clean_dir "$dir" --dry-run || {
+      warn "Se rechazó la previsualización de una ruta no segura: $dir"
+      return 1
+    }
+  else
+    safe_clean_dir "$dir" || {
+      warn "Se rechazó la limpieza de una ruta no segura: $dir"
+      return 1
+    }
+  fi
 }
 
 workspace_policy_values() {
@@ -84,6 +105,11 @@ prune_dind_normal() {
     return 0
   fi
 
+  if [[ "$CLEANUP_DRY_RUN" == true ]]; then
+    log "dry-run: ${dind} ejecutaría prune normal de contenedores/redes/volúmenes/imágenes/build cache"
+    return 0
+  fi
+
   compose exec -T "$dind" docker container prune -f >/dev/null 2>&1 || true
   compose exec -T "$dind" docker network prune -f >/dev/null 2>&1 || true
   compose exec -T "$dind" docker volume prune -f >/dev/null 2>&1 || true
@@ -100,6 +126,11 @@ prune_dind_aggressive() {
     return 0
   fi
 
+  if [[ "$CLEANUP_DRY_RUN" == true ]]; then
+    log "dry-run: ${dind} ejecutaría prune agresivo de imágenes/build cache"
+    return 0
+  fi
+
   compose exec -T "$dind" docker image prune -af --filter 'until=24h' >/dev/null 2>&1 || true
   compose exec -T "$dind" docker builder prune -af     --keep-storage "${BUILDKIT_CACHE_EMERGENCY_KEEP:-512MB}" >/dev/null 2>&1 || true
   compose exec -T "$dind" docker buildx prune -af     --max-used-space "${BUILDKIT_CACHE_EMERGENCY_KEEP:-512MB}" >/dev/null 2>&1 || true
@@ -111,6 +142,10 @@ recover_paused_runner_if_possible() {
   [[ -f "$marker" ]] || return 0
   usage="$(storage_usage_percent)"
   if (( usage <= ${DISK_RECOVERY_PERCENT:-70} )); then
+    if [[ "$CLEANUP_DRY_RUN" == true ]]; then
+      log "dry-run: ${runner} sería reiniciado al estar bajo el umbral de recuperación"
+      return 0
+    fi
     log "${runner}: almacenamiento recuperado (${usage}%). Reiniciando runner pausado."
     compose up -d "$runner" >/dev/null
     rm -f -- "$marker"
@@ -161,9 +196,13 @@ cleanup_heavy_runner_locked() {
     clear_cache_dir "$cache/toolcache"
     usage="$(storage_usage_percent)"
     if (( usage >= ${DISK_EMERGENCY_PERCENT:-90} )); then
-      warn "${runner}: uso ${usage}% después de reclaim; se pausa el listener idle"
-      compose stop "$runner" >/dev/null 2>&1 || true
-      touch "$marker"
+      if [[ "$CLEANUP_DRY_RUN" == true ]]; then
+        warn "dry-run: ${runner} sería pausado por emergencia de disco (${usage}%)"
+      else
+        warn "${runner}: uso ${usage}% después de reclaim; se pausa el listener idle"
+        compose stop "$runner" >/dev/null 2>&1 || true
+        touch "$marker"
+      fi
     fi
   fi
 }
