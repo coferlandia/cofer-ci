@@ -47,6 +47,18 @@ delete_expired_package_cache "$cache" 7
 [[ -e "$cache/toolcache/keep" ]] || fail "age retention incorrectly deleted toolcache"
 pass "age retention is scoped to npm/pip/nuget only"
 
+printf mount-loss > "$cache/npm/mount-loss"
+touch -d "10 days ago" "$cache/npm/mount-loss"
+ci_storage_verified() { return 1; }
+set +e
+delete_expired_package_cache "$cache" 7
+mount_loss_rc=$?
+set -e
+[[ "$mount_loss_rc" -eq 74 ]] || fail "package age cleanup did not fail closed after mount loss (rc=$mount_loss_rc)"
+[[ -e "$cache/npm/mount-loss" ]] || fail "package age cleanup deleted after mount loss"
+ci_storage_verified() { return 0; }
+pass "package age cleanup revalidates mount immediately before delete"
+
 for setting in PACKAGE_CACHE_MAX_GIB_PER_RUNNER TOOLCACHE_MAX_GIB_PER_RUNNER DIND_MAX_GIB_PER_RUNNER; do
   grep -q "^${setting}=" "$ROOT/.env.example" || fail "${setting} missing"
 done
