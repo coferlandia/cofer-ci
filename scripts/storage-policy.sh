@@ -90,6 +90,7 @@ delete_expired_package_cache() {
   local -a expired_files=()
 
   [[ -d "$cache" ]] || return 0
+  ci_storage_verified || return 74
   safe_path_in_ci_storage "$cache" || return 1
   [[ "$retention_days" =~ ^[0-9]+$ ]] || return 1
 
