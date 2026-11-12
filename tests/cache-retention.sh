@@ -15,6 +15,8 @@ declare -F cleanup_idle_cache_budget >/dev/null || fail "cleanup_idle_cache_budg
 TMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 CI_STORAGE_ROOT="$TMP_ROOT/ci"
+# Fixture paths are intentionally not real mounts; destructive helpers are tested separately.
+ci_storage_verified() { return 0; }
 cache="$CI_STORAGE_ROOT/cache-01"
 mkdir -p "$cache/npm" "$cache/pip" "$cache/nuget" "$cache/toolcache"
 dd if=/dev/zero of="$cache/npm/a" bs=1024 count=1 status=none
