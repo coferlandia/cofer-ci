@@ -17,7 +17,7 @@ soft_budget_reclaim_enabled 75 || fail "soft budgets disabled at warning thresho
 soft_budget_reclaim_enabled 81 || fail "soft budgets disabled between warning and aggressive threshold"
 pass "soft budgets activate only at shared-filesystem pressure"
 
-for pair in   "PACKAGE_CACHE_MAX_GIB_PER_RUNNER=4"   "TOOLCACHE_MAX_GIB_PER_RUNNER=8"   "DIND_MAX_GIB_PER_RUNNER=12"   "WORKSPACE_MAX_GIB_PER_RUNNER=12"   "WORKSPACE_IDLE_RETENTION_HOURS=48"   "BUILDKIT_CACHE_KEEP=6GB"   "BUILDKIT_CACHE_EMERGENCY_KEEP=1GB"; do
+for pair in   "PACKAGE_CACHE_MAX_GIB_PER_RUNNER=4"   "TOOLCACHE_MAX_GIB_PER_RUNNER=8"   "DIND_MAX_GIB_PER_RUNNER=12"   "WORKSPACE_MAX_GIB_PER_RUNNER=12"   "WORKSPACE_IDLE_RETENTION_HOURS=168"   "BUILDKIT_CACHE_KEEP=6GB"   "BUILDKIT_CACHE_EMERGENCY_KEEP=1GB"; do
   grep -q "^${pair}$" "$ROOT/.env.example" || fail "missing relaxed default: $pair"
 done
 pass "heavy-workflow soft-budget defaults are relaxed"
