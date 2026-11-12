@@ -84,6 +84,26 @@ sum_paths_bytes() {
   printf '%s\n' "$total"
 }
 
+
+delete_expired_package_cache() {
+  local cache="${1:-}" retention_days="${2:-}" dir
+
+  [[ -d "$cache" ]] || return 0
+  safe_path_in_ci_storage "$cache" || return 1
+  [[ "$retention_days" =~ ^[0-9]+$ ]] || return 1
+
+  for dir in "$cache/npm" "$cache/pip" "$cache/nuget"; do
+    [[ -d "$dir" ]] || continue
+    if storage_policy_dry_run; then
+      while IFS= read -r -d '' expired; do
+        printf 'would-remove=%s\n' "$expired"
+      done < <(find "$dir" -type f -mtime "+$retention_days" -print0 2>/dev/null)
+    else
+      find "$dir" -type f -mtime "+$retention_days" -delete 2>/dev/null || true
+    fi
+  done
+}
+
 cleanup_idle_cache_budget() {
   local cache="${1:-}" package_budget="${2:-}" tool_budget="${3:-}"
   local package_total tool_size dir
