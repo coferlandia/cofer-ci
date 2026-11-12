@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "profile_version": "1.0.0",
+  "repository": "coferlandia/cofer-ci",
+  "documentation": [
+    "README.md",
+    "docs/MAINTENANCE.md",
+    ".github/workflows/validate.yml"
+  ],
+  "local": {
+    "working_directory": ".",
+    "qualification_commands": [
+      {
+        "id": "package-validation",
+        "command": "./scripts/validate-package.sh",
+        "purpose": "validate Bash syntax, Docker Compose contract, storage hygiene regressions, documentation and package invariants"
+      }
+    ],
+    "required_services": [
+      "Docker Engine"
+    ],
+    "environment": []
+  },
+  "github": {
+    "submission": {
+      "mode": "existing-pr-events",
+      "workflow": ".github/workflows/validate.yml",
+      "activation": {
+        "kind": "ready-for-review"
+      }
+    },
+    "gates": [
+      {
+        "id": "package-validation",
+        "kind": "workflow",
+        "workflow": ".github/workflows/validate.yml",
+        "allowed_conclusions": [
+          "success"
+        ]
+      }
+    ],
+    "merge_group": {
+      "supported": false,
+      "authoritative_when_present": false
+    }
+  },
+  "identity": {
+    "base_sensitive": true,
+    "profile_sensitive": true
+  },
+  "exceptions": [],
+  "fingerprint": "8909947738867a921a763c91ef4b65796f22f51d30d6900e7d58e23814ec0852"
+}

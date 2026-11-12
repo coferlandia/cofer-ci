@@ -146,6 +146,34 @@ Valide:
 docker compose config >/tmp/coferlandia-ci-compose.yml
 ```
 
+### Política preventiva de almacenamiento
+
+Las revisiones con storage hygiene agregan defaults opcionales. Una instalación existente funciona con los defaults embebidos aunque todavía no los tenga en `.env`, pero se recomienda declararlos explícitamente para que la política operativa sea visible:
+
+```env
+RUNNER_CLEANUP_LEASE_WAIT_SECONDS=120
+HOST_CLEANUP_LEASE_WAIT_SECONDS=0
+CI_TRIM_INTERVAL_HOURS=24
+PACKAGE_CACHE_RETENTION_DAYS=7
+PACKAGE_CACHE_MAX_GIB_PER_RUNNER=2
+TOOLCACHE_MAX_GIB_PER_RUNNER=4
+WORKSPACE_IDLE_RETENTION_HOURS=24
+WORKSPACE_MAX_GIB_PER_RUNNER=4
+DIND_MAX_GIB_PER_RUNNER=6
+```
+
+El cambio también mueve `TMPDIR/TMP/TEMP` de cada listener a `/cache/tmp` y añade `flock` a la imagen del runner. Con los cuatro runners idle, después de actualizar el checkout:
+
+```bash
+sudo ./scripts/install-host.sh
+sudo ./scripts/install-systemd.sh
+sudo ./scripts/cleanup.sh --dry-run
+docker compose up -d --build
+sudo ./scripts/verify-installation.sh
+```
+
+`install-host.sh` crea los directorios `cache-XX/tmp` sin tocar registros ni credenciales. La reconstrucción del runner es necesaria para garantizar `flock`; no use `docker compose down -v`.
+
 ## 5.1 Ampliar almacenamiento histórico de 45 GiB
 
 Las instalaciones creadas antes de este ajuste pueden conservar un loopback de 45 GiB aunque el archivo `.env` nuevo declare 80 GiB. `install-host.sh` no agranda automáticamente un filesystem existente.

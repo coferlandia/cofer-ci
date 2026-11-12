@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Agregados leases compartidos entre cleanup del host y hooks de jobs, con estado `idle/busy/unknown` fail-closed para impedir carreras destructivas.
+- Los temporales de los listeners pasan a `/cache/tmp`; pre/post-job eliminan residuos regenerables sin inflar las capas de escritura de los contenedores.
+- Workspaces/checkouts, package caches, toolcache y Docker-in-Docker tienen presupuestos por runner además de los umbrales globales de presión.
+- El cleanup incorpora `--dry-run`, trim periódico verificado del loopback sparse y telemetría física/aparente de la imagen CI.
+
 - Endurecida la política de almacenamiento para la topología actual de tres runners pesados + Gate: baseline de instalación limpia de 80 GiB, retención de paquetes más corta y menor presupuesto de BuildKit.
 - Los hooks pre/post-job ahora purgan caches regenerables bajo presión de disco y reservan la purga de toolcache para emergencia.
 - El cleanup pasa de diario a horario y la limpieza agresiva deja de depender de la antigüedad de archivos cuando el filesystem compartido está cerca de ENOSPC.

@@ -3,6 +3,8 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
 source "${SCRIPT_DIR}/common.sh"
+# shellcheck source=cleanup-guards.sh
+source "${SCRIPT_DIR}/cleanup-guards.sh"
 load_env
 load_monitor_env
 
@@ -51,6 +53,8 @@ github_runner_is_online() {
 
 check "Docker host responde" docker info
 check "Filesystem CI montado" mountpoint -q "$CI_STORAGE_ROOT"
+check "Filesystem CI usa la imagen loop esperada" ci_storage_verified
+check "fstrim disponible en el host" command -v fstrim
 
 for index in 01 02 03; do
   runner="runner-${index}"
@@ -60,6 +64,9 @@ for index in 01 02 03; do
 
   check "${name} registrado localmente" test -f "$storage/.runner"
   check "Contenedor ${runner} healthy" container_is_healthy "$runner"
+  check "Temp persistente ${runner}" test -d "$CI_STORAGE_ROOT/cache-${index}/tmp"
+  check "flock disponible en ${runner}" compose exec -T "$runner" command -v flock
+  check "TMPDIR acotado en ${runner}" compose exec -T "$runner" sh -c 'test "$TMPDIR" = /cache/tmp'
   check "${dind} responde" compose exec -T "$dind" docker info
   check "Docker Compose dentro de ${runner}" compose exec -T "$runner" docker compose version
   check "Salida HTTPS de ${runner} hacia GitHub"     compose exec -T "$runner" curl -fsS --max-time 15 https://api.github.com/zen
@@ -71,6 +78,9 @@ gate_name="$(runner_name "$gate_runner")"
 gate_storage="$(runner_storage_dir "$gate_runner")"
 check "${gate_name} registrado localmente" test -f "$gate_storage/.runner"
 check "Contenedor ${gate_runner} healthy" container_is_healthy "$gate_runner"
+check "Temp persistente ${gate_runner}" test -d "$CI_STORAGE_ROOT/cache-04/tmp"
+check "flock disponible en ${gate_runner}" compose exec -T "$gate_runner" command -v flock
+check "TMPDIR acotado en ${gate_runner}" compose exec -T "$gate_runner" sh -c 'test "$TMPDIR" = /cache/tmp'
 check "Salida HTTPS de ${gate_runner} hacia GitHub" compose exec -T "$gate_runner" curl -fsS --max-time 15 https://api.github.com/zen
 check "Broker de GitHub Actions accesible desde ${gate_runner}" compose exec -T "$gate_runner" curl -fsS --max-time 15 https://broker.actions.githubusercontent.com/health
 

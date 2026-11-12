@@ -1,5 +1,5 @@
 [Unit]
-Description=Limpieza controlada de Coferlandia CI (dos runners)
+Description=Limpieza controlada de Coferlandia CI (tres runners pesados + Gate)
 After=docker.service
 Requires=docker.service
 
