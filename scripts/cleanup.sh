@@ -60,8 +60,8 @@ runner_idle_now() {
 
 workspace_policy_values() {
   local budget retention
-  budget="$(gib_to_bytes "${WORKSPACE_MAX_GIB_PER_RUNNER:-4}" 2>/dev/null || true)"
-  retention="${WORKSPACE_IDLE_RETENTION_HOURS:-$((${WORKSPACE_RETENTION_DAYS:-2} * 24))}"
+  budget="$(gib_to_bytes "${WORKSPACE_MAX_GIB_PER_RUNNER:-12}" 2>/dev/null || true)"
+  retention="${WORKSPACE_IDLE_RETENTION_HOURS:-48}"
   [[ "$budget" =~ ^[0-9]+$ && "$retention" =~ ^[0-9]+$ ]] || return 1
   printf '%s %s\n' "$budget" "$retention"
 }
@@ -78,11 +78,23 @@ apply_workspace_policy() {
     warn "${runner}: no se pudo aplicar política de workspace"
 }
 
+apply_workspace_age_retention() {
+  local runner="$1" work="$2" retention
+  runner_idle_now "$runner" || return 0
+  retention="${WORKSPACE_IDLE_RETENTION_HOURS:-48}"
+  [[ "$retention" =~ ^[0-9]+$ ]] || {
+    warn "${runner}: WORKSPACE_IDLE_RETENTION_HOURS inválido; se omite retención por edad"
+    return 0
+  }
+  cleanup_expired_idle_workspaces "$work" "$retention" ||
+    warn "${runner}: no se pudo aplicar retención por edad de workspace"
+}
+
 apply_cache_budget() {
   local runner="$1" cache="$2" package_budget tool_budget
   runner_idle_now "$runner" || return 0
-  package_budget="$(gib_to_bytes "${PACKAGE_CACHE_MAX_GIB_PER_RUNNER:-2}" 2>/dev/null || true)"
-  tool_budget="$(gib_to_bytes "${TOOLCACHE_MAX_GIB_PER_RUNNER:-4}" 2>/dev/null || true)"
+  package_budget="$(gib_to_bytes "${PACKAGE_CACHE_MAX_GIB_PER_RUNNER:-4}" 2>/dev/null || true)"
+  tool_budget="$(gib_to_bytes "${TOOLCACHE_MAX_GIB_PER_RUNNER:-8}" 2>/dev/null || true)"
 
   if [[ "$package_budget" =~ ^[0-9]+$ && "$tool_budget" =~ ^[0-9]+$ ]]; then
     cleanup_idle_cache_budget "$cache" "$package_budget" "$tool_budget" ||
@@ -96,7 +108,7 @@ apply_dind_budget() {
   local runner="$1" index="$2" dind="$3" budget size path
   runner_idle_now "$runner" || return 0
   path="${CI_STORAGE_ROOT}/docker-${index}"
-  budget="$(gib_to_bytes "${DIND_MAX_GIB_PER_RUNNER:-6}" 2>/dev/null || true)"
+  budget="$(gib_to_bytes "${DIND_MAX_GIB_PER_RUNNER:-12}" 2>/dev/null || true)"
   [[ "$budget" =~ ^[0-9]+$ ]] || {
     warn "${runner}: DIND_MAX_GIB_PER_RUNNER inválido"
     return 0
@@ -105,8 +117,8 @@ apply_dind_budget() {
   size="$(path_size_bytes "$path")"
   [[ "$size" =~ ^[0-9]+$ ]] || size=0
   if (( size > budget )); then
-    log "${runner}: DinD sobre presupuesto (${size}B > ${budget}B); reclaim agresivo"
-    prune_dind_aggressive "$dind"
+    log "${runner}: DinD sobre soft budget (${size}B > ${budget}B); reclaim de build cache bajo presión"
+    prune_dind_soft_budget "$dind"
   fi
 }
 
@@ -119,7 +131,7 @@ prune_dind_normal() {
   fi
 
   if [[ "$CLEANUP_DRY_RUN" == true ]]; then
-    log "dry-run: ${dind} ejecutaría prune normal de contenedores/redes/volúmenes/imágenes/build cache"
+    log "dry-run: ${dind} ejecutaría prune conservador de contenedores/redes/volúmenes e imágenes vencidas"
     return 0
   fi
 
@@ -127,8 +139,23 @@ prune_dind_normal() {
   compose exec -T "$dind" docker network prune -f >/dev/null 2>&1 || true
   compose exec -T "$dind" docker volume prune -f >/dev/null 2>&1 || true
   compose exec -T "$dind" docker image prune -af     --filter "until=${IMAGE_RETENTION_HOURS:-72}h" >/dev/null 2>&1 || true
-  compose exec -T "$dind" docker builder prune -af     --keep-storage "${BUILDKIT_CACHE_KEEP:-2GB}" >/dev/null 2>&1 || true
-  compose exec -T "$dind" docker buildx prune -af     --max-used-space "${BUILDKIT_CACHE_KEEP:-2GB}" >/dev/null 2>&1 || true
+}
+
+prune_dind_soft_budget() {
+  local dind="$1"
+
+  if ! compose exec -T "$dind" docker info >/dev/null 2>&1; then
+    warn "${dind}: Docker CI no responde; se omite reclaim de soft budget"
+    return 0
+  fi
+
+  if [[ "$CLEANUP_DRY_RUN" == true ]]; then
+    log "dry-run: ${dind} reduciría build cache al soft budget configurado"
+    return 0
+  fi
+
+  compose exec -T "$dind" docker builder prune -af     --keep-storage "${BUILDKIT_CACHE_KEEP:-6GB}" >/dev/null 2>&1 || true
+  compose exec -T "$dind" docker buildx prune -af     --max-used-space "${BUILDKIT_CACHE_KEEP:-6GB}" >/dev/null 2>&1 || true
 }
 
 prune_dind_aggressive() {
@@ -145,8 +172,8 @@ prune_dind_aggressive() {
   fi
 
   compose exec -T "$dind" docker image prune -af --filter 'until=24h' >/dev/null 2>&1 || true
-  compose exec -T "$dind" docker builder prune -af     --keep-storage "${BUILDKIT_CACHE_EMERGENCY_KEEP:-512MB}" >/dev/null 2>&1 || true
-  compose exec -T "$dind" docker buildx prune -af     --max-used-space "${BUILDKIT_CACHE_EMERGENCY_KEEP:-512MB}" >/dev/null 2>&1 || true
+  compose exec -T "$dind" docker builder prune -af     --keep-storage "${BUILDKIT_CACHE_EMERGENCY_KEEP:-1GB}" >/dev/null 2>&1 || true
+  compose exec -T "$dind" docker buildx prune -af     --max-used-space "${BUILDKIT_CACHE_EMERGENCY_KEEP:-1GB}" >/dev/null 2>&1 || true
 }
 
 recover_paused_runner_if_possible() {
@@ -191,12 +218,19 @@ cleanup_heavy_runner_locked() {
     warn "${runner}: cache fuera del storage verificado; se omite"
   fi
 
-  apply_cache_budget "$runner" "$cache"
-  apply_dind_budget "$runner" "$index" "$dind"
+  # Below disk pressure, preserve large recent state for heavy workflows.
+  # Only age-based retention applies during normal operation.
+  apply_workspace_age_retention "$runner" "$work"
 
-  # Workspaces/checkouts are regenerable. Reclaim them while idle based on
-  # their own age/size, independently of the global pressure threshold.
-  apply_workspace_policy "$runner" "$work" false
+  usage="$(storage_usage_percent)"
+  if soft_budget_reclaim_enabled "$usage"; then
+    log "${runner}: uso ${usage}% >= ${DISK_WARN_PERCENT:-75}%; aplicando soft budgets en runner idle"
+    apply_cache_budget "$runner" "$cache"
+    apply_dind_budget "$runner" "$index" "$dind"
+    apply_workspace_policy "$runner" "$work" false
+  else
+    log "${runner}: uso ${usage}% < ${DISK_WARN_PERCENT:-75}%; soft budgets omitidos"
+  fi
 
   usage="$(storage_usage_percent)"
   if (( usage >= ${DISK_AGGRESSIVE_PERCENT:-82} )); then
@@ -276,8 +310,16 @@ cleanup_gate_locked() {
     fi
   fi
 
-  apply_cache_budget "$runner" "$cache"
-  apply_workspace_policy "$runner" "$work" false
+  apply_workspace_age_retention "$runner" "$work"
+
+  usage="$(storage_usage_percent)"
+  if soft_budget_reclaim_enabled "$usage"; then
+    log "${runner}: uso ${usage}% >= ${DISK_WARN_PERCENT:-75}%; aplicando soft budgets en Gate idle"
+    apply_cache_budget "$runner" "$cache"
+    apply_workspace_policy "$runner" "$work" false
+  else
+    log "${runner}: uso ${usage}% < ${DISK_WARN_PERCENT:-75}%; soft budgets omitidos"
+  fi
 
   usage="$(storage_usage_percent)"
   if (( usage >= ${DISK_AGGRESSIVE_PERCENT:-82} )); then
