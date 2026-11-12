@@ -103,10 +103,8 @@ with_runner_lease() {
     return 75
   fi
 
-  set +e
-  "$@"
-  rc=$?
-  set -e
+  rc=0
+  "$@" || rc=$?
 
   flock -u "$fd" || true
   exec {fd}>&-
