@@ -5,6 +5,8 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/common.sh"
 # shellcheck source=cleanup-guards.sh
 source "${SCRIPT_DIR}/cleanup-guards.sh"
+# shellcheck source=storage-policy.sh
+source "${SCRIPT_DIR}/storage-policy.sh"
 
 load_env
 for command in docker mountpoint findmnt losetup flock readlink; do
