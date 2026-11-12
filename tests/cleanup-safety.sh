@@ -113,6 +113,23 @@ MOCK_ACTIVITY=unknown
 pass "runner activity is tri-state"
 
 MOCK_ACTIVITY=idle
+set +e
+runner_activity runner-01 >/dev/null
+flags_after_activity="$-"
+set -e
+[[ "$flags_after_activity" != *e* ]] || fail "runner_activity changed caller errexit state"
+pass "runner_activity preserves caller shell options"
+
+set +e
+with_cleanup_lock false
+lock_rc=$?
+flags_after_lock="$-"
+set -e
+[[ "$lock_rc" -eq 1 ]] || fail "cleanup lock did not propagate command rc"
+[[ "$flags_after_lock" != *e* ]] || fail "with_cleanup_lock changed caller errexit state"
+pass "cleanup lock preserves caller shell options and rc"
+
+MOCK_ACTIVITY=idle
 
 exec 8>"$CI_STORAGE_ROOT/.cleanup.lock"
 flock -n 8
