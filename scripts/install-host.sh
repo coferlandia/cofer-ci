@@ -63,7 +63,7 @@ if ! mountpoint -q "$CI_STORAGE_ROOT"; then
 fi
 
 for index in 01 02 03; do
-  mkdir -p     "$CI_STORAGE_ROOT/runner-${index}"     "$CI_STORAGE_ROOT/work-${index}"     "$CI_STORAGE_ROOT/cache-${index}/toolcache"     "$CI_STORAGE_ROOT/cache-${index}/nuget"     "$CI_STORAGE_ROOT/cache-${index}/npm"     "$CI_STORAGE_ROOT/cache-${index}/pip"     "$CI_STORAGE_ROOT/docker-${index}"     "$CI_STORAGE_ROOT/certs-${index}"
+  mkdir -p     "$CI_STORAGE_ROOT/runner-${index}"     "$CI_STORAGE_ROOT/work-${index}"     "$CI_STORAGE_ROOT/cache-${index}/toolcache"     "$CI_STORAGE_ROOT/cache-${index}/nuget"     "$CI_STORAGE_ROOT/cache-${index}/npm"     "$CI_STORAGE_ROOT/cache-${index}/pip"     "$CI_STORAGE_ROOT/cache-${index}/tmp"     "$CI_STORAGE_ROOT/docker-${index}"     "$CI_STORAGE_ROOT/certs-${index}"
 
   chown -R 1001:123     "$CI_STORAGE_ROOT/runner-${index}"     "$CI_STORAGE_ROOT/work-${index}"     "$CI_STORAGE_ROOT/cache-${index}"
 
@@ -76,7 +76,8 @@ mkdir -p \
   "$CI_STORAGE_ROOT/cache-04/toolcache" \
   "$CI_STORAGE_ROOT/cache-04/nuget" \
   "$CI_STORAGE_ROOT/cache-04/npm" \
-  "$CI_STORAGE_ROOT/cache-04/pip"
+  "$CI_STORAGE_ROOT/cache-04/pip" \
+  "$CI_STORAGE_ROOT/cache-04/tmp"
 chown -R 1001:123 "$CI_STORAGE_ROOT/runner-04" "$CI_STORAGE_ROOT/work-04" "$CI_STORAGE_ROOT/cache-04"
 chmod 0711 "$CI_STORAGE_ROOT/runner-04" "$CI_STORAGE_ROOT/work-04" "$CI_STORAGE_ROOT/cache-04"
 
