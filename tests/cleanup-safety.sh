@@ -129,6 +129,15 @@ set -e
 [[ "$flags_after_lock" != *e* ]] || fail "with_cleanup_lock changed caller errexit state"
 pass "cleanup lock preserves caller shell options and rc"
 
+set +e
+with_runner_lease runner-01 false
+runner_lease_rc=$?
+flags_after_runner_lease="$-"
+set -e
+[[ "$runner_lease_rc" -eq 1 ]] || fail "runner lease did not propagate command rc"
+[[ "$flags_after_runner_lease" != *e* ]] || fail "with_runner_lease changed caller errexit state"
+pass "runner lease preserves caller shell options and rc"
+
 MOCK_ACTIVITY=idle
 
 exec 8>"$CI_STORAGE_ROOT/.cleanup.lock"
