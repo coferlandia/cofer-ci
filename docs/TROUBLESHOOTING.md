@@ -167,11 +167,37 @@ done
 
 ## No space left on device
 
+Primero mida tanto el filesystem acotado como la asignación física de la imagen sparse:
+
+```bash
+sudo ./scripts/status.sh
+df -h / /srv/coferlandia-ci
+du -h /var/lib/coferlandia-ci.img
+du -h --apparent-size /var/lib/coferlandia-ci.img
+```
+
+Previsualice antes de borrar:
+
+```bash
+sudo ./scripts/cleanup.sh --dry-run
+```
+
+Si el plan es razonable, ejecute:
+
 ```bash
 sudo ./scripts/cleanup.sh
-df -h /srv/coferlandia-ci
-sudo du -xh --max-depth=2 /srv/coferlandia-ci | sort -h
 ```
+
+El cleanup sólo toca runners confirmados `idle`; `busy`, `unknown` o un lease ocupado se omiten. No elimine manualmente `runner-XX`, certificados ni el directorio completo de CI para resolver presión de disco.
+
+Para localizar crecimiento residual:
+
+```bash
+sudo du -xh --max-depth=2 /srv/coferlandia-ci | sort -h | tail -80
+docker ps --size
+```
+
+Los checkouts Git muy grandes se recuperan eliminando el workspace regenerable completo cuando el runner está idle; no borre `.git/objects/pack` selectivamente.
 
 Marcadores de pausa:
 
@@ -181,7 +207,7 @@ Marcadores de pausa:
 /srv/coferlandia-ci/.runner-03-paused-disk
 ```
 
-Después de liberar espacio, el cleanup reinicia los runners pesados pausados cuando el uso baja del umbral de recuperación. El Gate no utiliza este mecanismo de pausa.
+Después de liberar espacio, el cleanup reinicia los runners pesados pausados cuando el uso baja del umbral de recuperación. El Gate no utiliza este mecanismo. El trim periódico sólo devuelve bloques físicos cuando el mount loop está verificado y todos los runners están idle.
 
 ## El directorio operativo no coincide con los contenedores
 
