@@ -37,6 +37,15 @@ grep -q 'clear_runner_tmp "pre-job"' "$ROOT/hooks/pre-job.sh" ||
   fail "pre-job does not clear stale runner temp"
 grep -q 'clear_runner_tmp "post-job"' "$ROOT/hooks/post-job.sh" ||
   fail "post-job does not clear completed job temp"
-pass "pre/post hooks own runner temp lifecycle"
+gate_block="$(awk '/^  runner-04:/{flag=1;next}/^  [a-zA-Z0-9_-]+:/{if(flag) exit}flag' "$ROOT/compose.yml")"
+grep -q 'ACTIONS_RUNNER_HOOK_JOB_STARTED: /opt/runner-hooks/pre-job.sh' <<<"$gate_block" ||
+  fail "Gate does not receive pre-job cleanup hook"
+grep -q 'ACTIONS_RUNNER_HOOK_JOB_COMPLETED: /opt/runner-hooks/post-job.sh' <<<"$gate_block" ||
+  fail "Gate does not receive post-job cleanup hook"
+grep -q 'DOCKER_HOST' <<<"$gate_block" &&
+  fail "Gate must remain without Docker-in-Docker"
+grep -q 'DOCKER_HOST' "$ROOT/hooks/pre-job.sh" ||
+  fail "pre-job hook does not branch for Gate without Docker"
+pass "pre/post hooks own runner temp lifecycle on heavy and Gate runners"
 
 printf '\nrunner temp tests passed\n'
