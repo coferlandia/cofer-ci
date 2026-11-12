@@ -86,7 +86,8 @@ sum_paths_bytes() {
 
 
 delete_expired_package_cache() {
-  local cache="${1:-}" retention_days="${2:-}" dir
+  local cache="${1:-}" retention_days="${2:-}" dir expired
+  local -a expired_files=()
 
   [[ -d "$cache" ]] || return 0
   safe_path_in_ci_storage "$cache" || return 1
@@ -94,13 +95,18 @@ delete_expired_package_cache() {
 
   for dir in "$cache/npm" "$cache/pip" "$cache/nuget"; do
     [[ -d "$dir" ]] || continue
-    if storage_policy_dry_run; then
-      while IFS= read -r -d '' expired; do
-        printf 'would-remove=%s\n' "$expired"
-      done < <(find "$dir" -type f -mtime "+$retention_days" -print0 2>/dev/null)
-    else
-      find "$dir" -type f -mtime "+$retention_days" -delete 2>/dev/null || true
-    fi
+    expired_files=()
+    while IFS= read -r -d '' expired; do
+      expired_files+=("$expired")
+    done < <(find "$dir" -type f -mtime "+$retention_days" -print0 2>/dev/null)
+
+    for expired in "${expired_files[@]}"; do
+      if storage_policy_dry_run; then
+        safe_remove_path "$expired" --dry-run || return 1
+      else
+        safe_remove_path "$expired" || return 1
+      fi
+    done
   done
 }
 
