@@ -19,6 +19,7 @@ RUN apt-get update \
        rsync \
        tar \
        tini \
+       util-linux \
        unzip \
        zip \
        zstd \
