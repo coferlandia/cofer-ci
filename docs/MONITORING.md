@@ -17,6 +17,7 @@ Comprueba:
 - respuesta de los tres Docker CI;
 - filesystem raíz;
 - filesystem CI;
+- asignación física de la imagen sparse de CI en los logs de storage telemetry;
 - estado remoto opcional de los cuatro runners.
 
 La salud local y la disponibilidad remota son controles distintos. Un contenedor puede estar `healthy` porque `Runner.Listener` está vivo y, al mismo tiempo, GitHub puede reportar ese runner como `offline`. El watchdog usa el estado remoto para detectar ese caso.
@@ -70,6 +71,24 @@ La política es deliberadamente conservadora:
 
 El estado por runner se persiste bajo `/var/lib/coferlandia-ci-watchdog/`, por lo que un nuevo ciclo del timer conserva contadores, cooldown y recuperaciones pendientes.
 
+## Telemetría de almacenamiento
+
+Cada ejecución del watchdog registra una línea sin secretos con:
+
+```text
+Storage telemetry: host=<porcentaje> ci=<porcentaje> image_physical=<tamaño>
+```
+
+`image_physical` es la asignación real del archivo sparse y debe interpretarse junto con `df` del filesystem CI. El cleanup diario de trim registra además bytes físicos antes/después; el volumen que `fstrim` declara descartado no equivale por sí solo a bytes recuperados en el host.
+
+Consulte:
+
+```bash
+sudo journalctl -u coferlandia-ci-watchdog.service -n 100 --no-pager
+sudo journalctl -u coferlandia-ci-cleanup.service -n 100 --no-pager
+sudo ./scripts/status.sh
+```
+
 ## Pruebas
 
 ```bash
@@ -87,4 +106,4 @@ Para incluir el archivo de monitoreo protegido con `chmod 600`, ejecute:
 sudo ./scripts/status.sh
 ```
 
-Muestra los siete contenedores, recursos, disco, almacenamiento interno de cada daemon y, si `GITHUB_MONITOR_TOKEN` está configurado, el estado remoto de los cuatro runners.
+Muestra los siete contenedores, recursos, filesystem CI, tamaño físico/aparente de la imagen sparse, almacenamiento interno de cada daemon y, si `GITHUB_MONITOR_TOKEN` está configurado, el estado remoto de los cuatro runners.
