@@ -23,6 +23,7 @@ post_job_main() {
   docker volume prune -f >/dev/null 2>&1 || true
 
   reclaim_runner_cache_if_needed "post-job"
+  clear_runner_tmp "post-job"
 
   log "Se conservan imágenes y build cache reutilizables"
   docker system df || true
