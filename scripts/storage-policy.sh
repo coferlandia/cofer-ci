@@ -65,3 +65,36 @@ cleanup_idle_workspaces() {
     fi
   done
 }
+
+sum_paths_bytes() {
+  local total=0 path size
+  for path in "$@"; do
+    size="$(path_size_bytes "$path")"
+    [[ "$size" =~ ^[0-9]+$ ]] || size=0
+    total=$((total + size))
+  done
+  printf '%s\n' "$total"
+}
+
+cleanup_idle_cache_budget() {
+  local cache="${1:-}" package_budget="${2:-}" tool_budget="${3:-}"
+  local package_total tool_size dir
+
+  [[ -d "$cache" ]] || return 0
+  safe_path_in_ci_storage "$cache" || return 1
+  [[ "$package_budget" =~ ^[0-9]+$ && "$tool_budget" =~ ^[0-9]+$ ]] || return 1
+
+  package_total="$(sum_paths_bytes "$cache/npm" "$cache/pip" "$cache/nuget")"
+  if (( package_total > package_budget )); then
+    storage_policy_log "package cache reclaim: ${cache} size=${package_total}B budget=${package_budget}B"
+    for dir in "$cache/npm" "$cache/pip" "$cache/nuget"; do
+      [[ -d "$dir" ]] && safe_clean_dir "$dir"
+    done
+  fi
+
+  tool_size="$(path_size_bytes "$cache/toolcache")"
+  if [[ "$tool_size" =~ ^[0-9]+$ ]] && (( tool_size > tool_budget )); then
+    storage_policy_log "toolcache reclaim: ${cache}/toolcache size=${tool_size}B budget=${tool_budget}B"
+    [[ -d "$cache/toolcache" ]] && safe_clean_dir "$cache/toolcache"
+  fi
+}
