@@ -17,6 +17,7 @@ pre_job_main() {
     return 1
   fi
 
+  clear_runner_tmp "pre-job"
   reclaim_runner_cache_if_needed "pre-job"
 
   log "Eliminando residuos del job anterior en este Docker CI aislado"
