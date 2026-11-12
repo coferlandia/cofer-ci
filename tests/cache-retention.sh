@@ -48,8 +48,12 @@ pass "age retention is scoped to npm/pip/nuget only"
 for setting in PACKAGE_CACHE_MAX_GIB_PER_RUNNER TOOLCACHE_MAX_GIB_PER_RUNNER DIND_MAX_GIB_PER_RUNNER; do
   grep -q "^${setting}=" "$ROOT/.env.example" || fail "${setting} missing"
 done
-grep -q 'DIND_MAX_GIB_PER_RUNNER' "$ROOT/scripts/cleanup.sh" || fail "DinD budget not wired"
-grep -q 'cleanup_idle_cache_budget' "$ROOT/scripts/cleanup.sh" || fail "cache budget not wired"
+grep -q 'apply_dind_budget "$runner" "$index" "$dind"' "$ROOT/scripts/cleanup.sh" ||
+  fail "DinD budget helper is defined but not applied"
+grep -q 'apply_cache_budget "$runner" "$cache"' "$ROOT/scripts/cleanup.sh" ||
+  fail "cache budget helper is defined but not applied"
+grep -q 'delete_expired_package_cache "$cache"' "$ROOT/scripts/cleanup.sh" ||
+  fail "package age retention is not wired through scoped helper"
 pass "per-runner cache and DinD budgets are wired"
 
 printf '\ncache retention tests passed\n'
