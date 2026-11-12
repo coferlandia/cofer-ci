@@ -15,6 +15,8 @@ source "$POLICY"
 TMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 CI_STORAGE_ROOT="$TMP_ROOT/ci"
+# Fixture paths are intentionally not real mounts; destructive helpers are tested separately.
+ci_storage_verified() { return 0; }
 mkdir -p "$CI_STORAGE_ROOT/work-01/_actions" "$CI_STORAGE_ROOT/work-01/secretarIA/secretarIA/.git/objects/pack"
 printf keep > "$CI_STORAGE_ROOT/work-01/_actions/keep"
 dd if=/dev/zero of="$CI_STORAGE_ROOT/work-01/secretarIA/secretarIA/.git/objects/pack/pack-a" bs=2048 count=1 status=none
