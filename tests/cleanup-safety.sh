@@ -91,6 +91,18 @@ MOCK_LOOP_IMAGE="$CI_STORAGE_IMAGE"
 ci_storage_verified || fail "expected loop mount rejected"
 pass "expected loop mount accepted"
 
+mkdir -p "$CI_STORAGE_ROOT/remount-check"
+printf keep > "$CI_STORAGE_ROOT/remount-check/file"
+MOCK_MOUNTED=false
+set +e
+safe_clean_dir "$CI_STORAGE_ROOT/remount-check"
+remount_rc=$?
+set -e
+[[ "$remount_rc" -eq 74 ]] || fail "lost mount did not block cleanup (rc=$remount_rc)"
+[[ -f "$CI_STORAGE_ROOT/remount-check/file" ]] || fail "cleanup modified data after mount disappeared"
+MOCK_MOUNTED=true
+pass "destructive helper revalidates mount immediately before delete"
+
 mkdir -p "$CI_STORAGE_ROOT/safe"
 printf x > "$CI_STORAGE_ROOT/safe/file"
 safe_clean_dir "$CI_STORAGE_ROOT/safe"
