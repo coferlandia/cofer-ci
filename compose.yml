@@ -49,6 +49,9 @@ x-runner-common: &runner-common
     NUGET_PACKAGES: /cache/nuget
     npm_config_cache: /cache/npm
     PIP_CACHE_DIR: /cache/pip
+    TMPDIR: /cache/tmp
+    TMP: /cache/tmp
+    TEMP: /cache/tmp
     RUNNER_CACHE_PRESSURE_PERCENT: ${RUNNER_CACHE_PRESSURE_PERCENT:-78}
     RUNNER_CACHE_EMERGENCY_PERCENT: ${RUNNER_CACHE_EMERGENCY_PERCENT:-88}
     RUNNER_CLEANUP_LEASE_WAIT_SECONDS: ${RUNNER_CLEANUP_LEASE_WAIT_SECONDS:-120}
@@ -104,6 +107,9 @@ services:
       NUGET_PACKAGES: /cache/nuget
       npm_config_cache: /cache/npm
       PIP_CACHE_DIR: /cache/pip
+      TMPDIR: /cache/tmp
+      TMP: /cache/tmp
+      TEMP: /cache/tmp
       RUNNER_CACHE_PRESSURE_PERCENT: ${RUNNER_CACHE_PRESSURE_PERCENT:-78}
       RUNNER_CACHE_EMERGENCY_PERCENT: ${RUNNER_CACHE_EMERGENCY_PERCENT:-88}
       RUNNER_CLEANUP_LEASE_WAIT_SECONDS: ${RUNNER_CLEANUP_LEASE_WAIT_SECONDS:-120}
@@ -148,6 +154,9 @@ services:
       NUGET_PACKAGES: /cache/nuget
       npm_config_cache: /cache/npm
       PIP_CACHE_DIR: /cache/pip
+      TMPDIR: /cache/tmp
+      TMP: /cache/tmp
+      TEMP: /cache/tmp
       RUNNER_CACHE_PRESSURE_PERCENT: ${RUNNER_CACHE_PRESSURE_PERCENT:-78}
       RUNNER_CACHE_EMERGENCY_PERCENT: ${RUNNER_CACHE_EMERGENCY_PERCENT:-88}
       RUNNER_CLEANUP_LEASE_WAIT_SECONDS: ${RUNNER_CLEANUP_LEASE_WAIT_SECONDS:-120}
@@ -192,6 +201,9 @@ services:
       NUGET_PACKAGES: /cache/nuget
       npm_config_cache: /cache/npm
       PIP_CACHE_DIR: /cache/pip
+      TMPDIR: /cache/tmp
+      TMP: /cache/tmp
+      TEMP: /cache/tmp
       RUNNER_CACHE_PRESSURE_PERCENT: ${RUNNER_CACHE_PRESSURE_PERCENT:-78}
       RUNNER_CACHE_EMERGENCY_PERCENT: ${RUNNER_CACHE_EMERGENCY_PERCENT:-88}
       RUNNER_CLEANUP_LEASE_WAIT_SECONDS: ${RUNNER_CLEANUP_LEASE_WAIT_SECONDS:-120}
@@ -216,6 +228,9 @@ services:
       NUGET_PACKAGES: /cache/nuget
       npm_config_cache: /cache/npm
       PIP_CACHE_DIR: /cache/pip
+      TMPDIR: /cache/tmp
+      TMP: /cache/tmp
+      TEMP: /cache/tmp
       RUNNER_CACHE_PRESSURE_PERCENT: ${RUNNER_CACHE_PRESSURE_PERCENT:-78}
       RUNNER_CACHE_EMERGENCY_PERCENT: ${RUNNER_CACHE_EMERGENCY_PERCENT:-88}
       RUNNER_CLEANUP_LEASE_WAIT_SECONDS: ${RUNNER_CLEANUP_LEASE_WAIT_SECONDS:-120}
