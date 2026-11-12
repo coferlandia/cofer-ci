@@ -65,6 +65,11 @@ trim_ci_storage_if_due() {
   ci_trim_is_due || return 0
   all_runners_idle_for_storage_maintenance || return 0
 
+  if [[ "${CLEANUP_DRY_RUN:-false}" == true ]]; then
+    loop_maintenance_log "dry-run: fstrim se ejecutaría sobre ${CI_STORAGE_ROOT}"
+    return 0
+  fi
+
   if ! command -v fstrim >/dev/null 2>&1; then
     loop_maintenance_warn "trim omitido: fstrim no disponible"
     return 0
