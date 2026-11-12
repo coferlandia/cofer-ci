@@ -88,7 +88,7 @@ with_cleanup_lock() {
 }
 
 with_runner_lease() {
-  local service="${1:-}" timeout="${RUNNER_CLEANUP_LEASE_WAIT_SECONDS:-0}"
+  local service="${1:-}" timeout="${HOST_CLEANUP_LEASE_WAIT_SECONDS:-0}"
   local index cache lock_file fd rc
   shift || true
 
