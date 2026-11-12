@@ -53,10 +53,11 @@ runner_activity() {
     return 0
   fi
 
-  set +e
-  docker exec "$cid" pgrep -x Runner.Worker >/dev/null 2>&1
-  rc=$?
-  set -e
+  if docker exec "$cid" pgrep -x Runner.Worker >/dev/null 2>&1; then
+    rc=0
+  else
+    rc=$?
+  fi
 
   case "$rc" in
     0) printf 'busy\n' ;;
@@ -77,10 +78,8 @@ with_cleanup_lock() {
     return 75
   fi
 
-  set +e
-  "$@"
-  rc=$?
-  set -e
+  rc=0
+  "$@" || rc=$?
 
   flock -u "$fd" || true
   exec {fd}>&-
