@@ -12,13 +12,18 @@ log() {
 }
 
 pre_job_main() {
+  clear_runner_tmp "pre-job"
+  reclaim_runner_cache_if_needed "pre-job"
+
+  if [[ -z "${DOCKER_HOST:-}" ]]; then
+    log "Runner sin Docker-in-Docker: limpieza de storage completada"
+    return 0
+  fi
+
   if ! docker info >/dev/null 2>&1; then
     log "ERROR: Docker CI no responde"
     return 1
   fi
-
-  clear_runner_tmp "pre-job"
-  reclaim_runner_cache_if_needed "pre-job"
 
   log "Eliminando residuos del job anterior en este Docker CI aislado"
   docker ps -aq | xargs -r docker rm -f >/dev/null 2>&1 || true
