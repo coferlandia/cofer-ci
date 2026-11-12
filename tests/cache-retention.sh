@@ -35,6 +35,16 @@ cleanup_idle_cache_budget "$cache" 1048576 1048576
   fail "cache below budget was removed"
 pass "cache below budget is retained"
 
+mkdir -p "$cache/npm" "$cache/toolcache"
+printf old-package > "$cache/npm/old"
+printf old-tool > "$cache/toolcache/keep"
+touch -d "10 days ago" "$cache/npm/old" "$cache/toolcache/keep"
+declare -F delete_expired_package_cache >/dev/null || fail "delete_expired_package_cache missing"
+delete_expired_package_cache "$cache" 7
+[[ ! -e "$cache/npm/old" ]] || fail "expired package cache was retained"
+[[ -e "$cache/toolcache/keep" ]] || fail "age retention incorrectly deleted toolcache"
+pass "age retention is scoped to npm/pip/nuget only"
+
 for setting in PACKAGE_CACHE_MAX_GIB_PER_RUNNER TOOLCACHE_MAX_GIB_PER_RUNNER DIND_MAX_GIB_PER_RUNNER; do
   grep -q "^${setting}=" "$ROOT/.env.example" || fail "${setting} missing"
 done
