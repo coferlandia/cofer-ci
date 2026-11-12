@@ -10,6 +10,8 @@ source "$ROOT/scripts/cleanup-guards.sh"
 TMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 CI_STORAGE_ROOT="$TMP_ROOT/ci"
+# Fixture paths are intentionally not real mounts; destructive helpers are tested separately.
+ci_storage_verified() { return 0; }
 mkdir -p "$CI_STORAGE_ROOT/safe"
 printf keep > "$CI_STORAGE_ROOT/safe/file"
 output="$(safe_clean_dir "$CI_STORAGE_ROOT/safe" --dry-run)"
