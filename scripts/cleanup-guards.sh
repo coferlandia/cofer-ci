@@ -130,6 +130,7 @@ safe_clean_dir() {
   [[ "${2:-}" == "--dry-run" ]] && dry_run=true
 
   [[ -d "$target" ]] || return 1
+  ci_storage_verified || return 74
   safe_path_in_ci_storage "$target" || return 1
 
   while IFS= read -r -d '' child; do
@@ -145,6 +146,7 @@ safe_remove_path() {
   local target="${1:-}" dry_run=false
   [[ "${2:-}" == "--dry-run" ]] && dry_run=true
 
+  ci_storage_verified || return 74
   safe_path_in_ci_storage "$target" || return 1
 
   if [[ "$dry_run" == true ]]; then
