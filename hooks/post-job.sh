@@ -12,6 +12,14 @@ log() {
 }
 
 post_job_main() {
+  reclaim_runner_cache_if_needed "post-job"
+  clear_runner_tmp "post-job"
+
+  if [[ -z "${DOCKER_HOST:-}" ]]; then
+    log "Runner sin Docker-in-Docker: limpieza de storage completada"
+    return 0
+  fi
+
   if ! docker info >/dev/null 2>&1; then
     log "ADVERTENCIA: Docker CI no responde; el watchdog realizará el diagnóstico"
     return 0
@@ -21,9 +29,6 @@ post_job_main() {
   docker ps -aq | xargs -r docker rm -f >/dev/null 2>&1 || true
   docker network prune -f >/dev/null 2>&1 || true
   docker volume prune -f >/dev/null 2>&1 || true
-
-  reclaim_runner_cache_if_needed "post-job"
-  clear_runner_tmp "post-job"
 
   log "Se conservan imágenes y build cache reutilizables"
   docker system df || true
