@@ -44,6 +44,36 @@ apply_workspace_policy() {
     warn "${runner}: no se pudo aplicar política de workspace"
 }
 
+apply_cache_budget() {
+  local runner="$1" cache="$2" package_budget tool_budget
+  package_budget="$(gib_to_bytes "${PACKAGE_CACHE_MAX_GIB_PER_RUNNER:-2}" 2>/dev/null || true)"
+  tool_budget="$(gib_to_bytes "${TOOLCACHE_MAX_GIB_PER_RUNNER:-4}" 2>/dev/null || true)"
+
+  if [[ "$package_budget" =~ ^[0-9]+$ && "$tool_budget" =~ ^[0-9]+$ ]]; then
+    cleanup_idle_cache_budget "$cache" "$package_budget" "$tool_budget" ||
+      warn "${runner}: no se pudo aplicar presupuesto de cache"
+  else
+    warn "${runner}: configuración de presupuesto de cache inválida"
+  fi
+}
+
+apply_dind_budget() {
+  local runner="$1" index="$2" dind="$3" budget size path
+  path="${CI_STORAGE_ROOT}/docker-${index}"
+  budget="$(gib_to_bytes "${DIND_MAX_GIB_PER_RUNNER:-6}" 2>/dev/null || true)"
+  [[ "$budget" =~ ^[0-9]+$ ]] || {
+    warn "${runner}: DIND_MAX_GIB_PER_RUNNER inválido"
+    return 0
+  }
+
+  size="$(path_size_bytes "$path")"
+  [[ "$size" =~ ^[0-9]+$ ]] || size=0
+  if (( size > budget )); then
+    log "${runner}: DinD sobre presupuesto (${size}B > ${budget}B); reclaim agresivo"
+    prune_dind_aggressive "$dind"
+  fi
+}
+
 prune_dind_normal() {
   local dind="$1"
 
