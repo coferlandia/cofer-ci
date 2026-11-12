@@ -7,6 +7,8 @@ source "${SCRIPT_DIR}/common.sh"
 source "${SCRIPT_DIR}/cleanup-guards.sh"
 # shellcheck source=storage-policy.sh
 source "${SCRIPT_DIR}/storage-policy.sh"
+# shellcheck source=loop-maintenance.sh
+source "${SCRIPT_DIR}/loop-maintenance.sh"
 
 load_env
 for command in docker mountpoint findmnt losetup flock readlink; do
@@ -250,6 +252,8 @@ run_cleanup() {
     cleanup_heavy_runner "$index"
   done
   cleanup_gate
+
+  trim_ci_storage_if_due
 
   usage_after="$(storage_usage_percent)"
   log "Limpieza terminada. Uso antes=${usage_before}% después=${usage_after}%"
