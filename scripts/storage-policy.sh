@@ -37,6 +37,39 @@ path_age_hours() {
   printf '%s\n' "$(((now - modified) / 3600))"
 }
 
+soft_budget_reclaim_enabled() {
+  local usage="${1:-}" warn="${DISK_WARN_PERCENT:-75}"
+  [[ "$usage" =~ ^[0-9]+$ && "$warn" =~ ^[0-9]+$ ]] || return 1
+  (( usage >= warn ))
+}
+
+cleanup_expired_idle_workspaces() {
+  local work="${1:-}" retention_hours="${2:-}" candidate age
+  local -a candidates=()
+
+  [[ -d "$work" ]] || return 0
+  safe_path_in_ci_storage "$work" || return 1
+  [[ "$retention_hours" =~ ^[0-9]+$ ]] || return 1
+
+  while IFS= read -r -d '' candidate; do
+    candidates+=("$candidate")
+  done < <(
+    find "$work" -mindepth 1 -maxdepth 1 -type d ! -name '_*' -print0 2>/dev/null
+  )
+
+  for candidate in "${candidates[@]}"; do
+    age="$(path_age_hours "$candidate" 2>/dev/null || printf '0')"
+    if (( age >= retention_hours )); then
+      storage_policy_log "workspace age reclaim: ${candidate} age=${age}h retention=${retention_hours}h"
+      if storage_policy_dry_run; then
+        safe_remove_path "$candidate" --dry-run || return 1
+      else
+        safe_remove_path "$candidate" || return 1
+      fi
+    fi
+  done
+}
+
 cleanup_idle_workspaces() {
   local work="${1:-}" budget_bytes="${2:-}" retention_hours="${3:-}" force="${4:-false}"
   local candidate size age total=0

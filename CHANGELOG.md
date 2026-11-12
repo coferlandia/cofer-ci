@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Los presupuestos de workspace/cache/DinD pasan a ser soft budgets activados sólo desde 75% de uso del filesystem CI; por debajo de ese umbral los workflows pesados conservan estado reciente aunque exceda esos tamaños. Se relajan además los defaults de reclaim para reducir churn entre ejecuciones pesadas.
+
 - Agregados leases compartidos entre cleanup del host y hooks de jobs, con estado `idle/busy/unknown` fail-closed para impedir carreras destructivas.
 - Los temporales de los listeners pasan a `/cache/tmp`; pre/post-job eliminan residuos regenerables sin inflar las capas de escritura de los contenedores.
 - Workspaces/checkouts, package caches, toolcache y Docker-in-Docker tienen presupuestos por runner además de los umbrales globales de presión.
