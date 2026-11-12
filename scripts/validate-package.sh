@@ -8,7 +8,7 @@ failures=0
 ok() { printf 'OK    %s\n' "$1"; }
 fail() { printf 'ERROR %s\n' "$1" >&2; failures=$((failures + 1)); }
 
-for file in scripts/*.sh hooks/*.sh runner/*.sh; do
+for file in scripts/*.sh hooks/*.sh runner/*.sh tests/*.sh; do
   if bash -n "$file"; then
     ok "Sintaxis Bash: $file"
   else
@@ -84,6 +84,14 @@ grep -q 'RUNNER_CACHE_PRESSURE_PERCENT' compose.yml &&
   grep -q 'RUNNER_CACHE_EMERGENCY_PERCENT' compose.yml &&
   ok "Compose expone umbrales de presión de cache" ||
   fail "Compose debe exponer los umbrales de presión de cache"
+
+for test_script in tests/*.sh; do
+  if bash "$test_script"; then
+    ok "Test $test_script"
+  else
+    fail "Test $test_script"
+  fi
+done
 
 if (( failures > 0 )); then
   printf '\nValidación fallida: %s problema(s).\n' "$failures" >&2
