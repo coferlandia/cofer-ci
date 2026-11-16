@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Corregido el runner Gate para montar los hooks administrativos que ya tenía configurados; la validación de paquete y `verify-installation.sh` ahora prueban explícitamente que los hooks pre/post-job existen y son ejecutables dentro de todos los runners.
+
 - Los presupuestos de workspace/cache/DinD pasan a ser soft budgets activados sólo desde 75% de uso del filesystem CI; por debajo de ese umbral los workflows pesados conservan estado reciente aunque exceda esos tamaños. Se relajan además los defaults de reclaim para reducir churn entre ejecuciones pesadas.
 
 - Agregados leases compartidos entre cleanup del host y hooks de jobs, con estado `idle/busy/unknown` fail-closed para impedir carreras destructivas.
