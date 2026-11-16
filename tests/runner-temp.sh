@@ -42,6 +42,8 @@ grep -q 'ACTIONS_RUNNER_HOOK_JOB_STARTED: /opt/runner-hooks/pre-job.sh' <<<"$gat
   fail "Gate does not receive pre-job cleanup hook"
 grep -q 'ACTIONS_RUNNER_HOOK_JOB_COMPLETED: /opt/runner-hooks/post-job.sh' <<<"$gate_block" ||
   fail "Gate does not receive post-job cleanup hook"
+grep -q -- '- ./hooks:/opt/runner-hooks:ro' <<<"$gate_block" ||
+  fail "Gate configures runner hooks but does not mount ./hooks at /opt/runner-hooks"
 grep -q 'DOCKER_HOST' <<<"$gate_block" &&
   fail "Gate must remain without Docker-in-Docker"
 grep -q 'DOCKER_HOST' "$ROOT/hooks/pre-job.sh" ||

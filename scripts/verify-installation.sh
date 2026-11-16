@@ -67,6 +67,8 @@ for index in 01 02 03; do
   check "Temp persistente ${runner}" test -d "$CI_STORAGE_ROOT/cache-${index}/tmp"
   check "flock disponible en ${runner}" compose exec -T "$runner" sh -lc 'command -v flock >/dev/null'
   check "TMPDIR acotado en ${runner}" compose exec -T "$runner" sh -c 'test "$TMPDIR" = /cache/tmp'
+  check "Hook pre-job ejecutable en ${runner}" compose exec -T "$runner" test -x /opt/runner-hooks/pre-job.sh
+  check "Hook post-job ejecutable en ${runner}" compose exec -T "$runner" test -x /opt/runner-hooks/post-job.sh
   check "${dind} responde" compose exec -T "$dind" docker info
   check "Docker Compose dentro de ${runner}" compose exec -T "$runner" docker compose version
   check "Salida HTTPS de ${runner} hacia GitHub"     compose exec -T "$runner" curl -fsS --max-time 15 https://api.github.com/zen
@@ -81,6 +83,8 @@ check "Contenedor ${gate_runner} healthy" container_is_healthy "$gate_runner"
 check "Temp persistente ${gate_runner}" test -d "$CI_STORAGE_ROOT/cache-04/tmp"
 check "flock disponible en ${gate_runner}" compose exec -T "$gate_runner" sh -lc 'command -v flock >/dev/null'
 check "TMPDIR acotado en ${gate_runner}" compose exec -T "$gate_runner" sh -c 'test "$TMPDIR" = /cache/tmp'
+check "Hook pre-job ejecutable en ${gate_runner}" compose exec -T "$gate_runner" test -x /opt/runner-hooks/pre-job.sh
+check "Hook post-job ejecutable en ${gate_runner}" compose exec -T "$gate_runner" test -x /opt/runner-hooks/post-job.sh
 check "Salida HTTPS de ${gate_runner} hacia GitHub" compose exec -T "$gate_runner" curl -fsS --max-time 15 https://api.github.com/zen
 check "Broker de GitHub Actions accesible desde ${gate_runner}" compose exec -T "$gate_runner" curl -fsS --max-time 15 https://broker.actions.githubusercontent.com/health
 

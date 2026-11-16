@@ -244,6 +244,7 @@ services:
       - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/runner-04:/opt/actions-runner
       - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/work-04:/opt/actions-runner/_work
       - ${CI_STORAGE_ROOT:-/srv/coferlandia-ci}/cache-04:/cache
+      - ./hooks:/opt/runner-hooks:ro
     networks: [gate-network]
 
 networks:

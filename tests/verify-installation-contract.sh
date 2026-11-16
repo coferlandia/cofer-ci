@@ -23,4 +23,13 @@ if grep -Fq 'compose exec -T "$gate_runner" command -v flock' "$TARGET"; then
   fail "gate runner flock check still execs shell builtin directly"
 fi
 
-echo "result=VERIFY_INSTALLATION_FLOCK_CONTRACT_READY"
+grep -Fq 'compose exec -T "$runner" test -x /opt/runner-hooks/pre-job.sh' "$TARGET" ||
+  fail "heavy runner live verification must prove pre-job hook exists and is executable"
+grep -Fq 'compose exec -T "$runner" test -x /opt/runner-hooks/post-job.sh' "$TARGET" ||
+  fail "heavy runner live verification must prove post-job hook exists and is executable"
+grep -Fq 'compose exec -T "$gate_runner" test -x /opt/runner-hooks/pre-job.sh' "$TARGET" ||
+  fail "Gate live verification must prove pre-job hook exists and is executable"
+grep -Fq 'compose exec -T "$gate_runner" test -x /opt/runner-hooks/post-job.sh' "$TARGET" ||
+  fail "Gate live verification must prove post-job hook exists and is executable"
+
+echo "result=VERIFY_INSTALLATION_HOOK_CONTRACT_READY"
