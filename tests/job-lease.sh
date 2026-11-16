@@ -32,7 +32,7 @@ with_runner_cleanup_lease mark_called ||
 pass "runner hook accepts readable lock without write permission"
 
 rm -f "$called"
-exec 8>"$RUNNER_CLEANUP_LOCK_FILE"
+exec 8<"$RUNNER_CLEANUP_LOCK_FILE"
 flock -n 8
 set +e
 with_runner_cleanup_lease mark_called
