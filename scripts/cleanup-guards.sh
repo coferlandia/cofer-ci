@@ -99,7 +99,11 @@ with_runner_lease() {
   [[ -d "$cache" ]] || return 78
   lock_file="$cache/.cleanup.lock"
 
-  exec {fd}>"$lock_file"
+  if [[ ! -e "$lock_file" ]]; then
+    : > "$lock_file" || return 73
+  fi
+
+  exec {fd}<"$lock_file"
   if ! flock -w "$timeout" "$fd"; then
     exec {fd}>&-
     return 75

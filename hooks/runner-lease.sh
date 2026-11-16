@@ -8,7 +8,15 @@ with_runner_cleanup_lease() {
   local fd rc=0
 
   mkdir -p "$(dirname -- "$lock_file")"
-  exec {fd}>"$lock_file"
+
+  # The lock contains no data. Open it read-only so host cleanup (root), runner
+  # hooks (runner user) and host operators can flock the same inode even when a
+  # different user created it.
+  if [[ ! -e "$lock_file" ]]; then
+    : > "$lock_file" || return 73
+  fi
+
+  exec {fd}<"$lock_file"
   if ! flock -w "$timeout" "$fd"; then
     exec {fd}>&-
     return 75
