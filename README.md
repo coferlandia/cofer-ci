@@ -2,7 +2,7 @@
 
 Servidor self-hosted de GitHub Actions para ejecutar hasta **tres jobs pesados concurrentes** y un Gate liviano independiente en una VM compartida, sin exponer el Docker productivo del host.
 
-Versión del código: **0.4.1**
+Versión del código: **0.4.2**
 
 ## Arquitectura
 
