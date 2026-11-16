@@ -71,7 +71,7 @@ for index in 01 02 03; do
 
   touch "$CI_STORAGE_ROOT/cache-${index}/.cleanup.lock"
   chown 1001:123 "$CI_STORAGE_ROOT/cache-${index}/.cleanup.lock"
-  chmod 0666 "$CI_STORAGE_ROOT/cache-${index}/.cleanup.lock"
+  chmod 0644 "$CI_STORAGE_ROOT/cache-${index}/.cleanup.lock"
 done
 
 mkdir -p \
@@ -86,7 +86,7 @@ chown -R 1001:123 "$CI_STORAGE_ROOT/runner-04" "$CI_STORAGE_ROOT/work-04" "$CI_S
 chmod 0711 "$CI_STORAGE_ROOT/runner-04" "$CI_STORAGE_ROOT/work-04" "$CI_STORAGE_ROOT/cache-04"
 touch "$CI_STORAGE_ROOT/cache-04/.cleanup.lock"
 chown 1001:123 "$CI_STORAGE_ROOT/cache-04/.cleanup.lock"
-chmod 0666 "$CI_STORAGE_ROOT/cache-04/.cleanup.lock"
+chmod 0644 "$CI_STORAGE_ROOT/cache-04/.cleanup.lock"
 
 chmod 0755 "$CI_STORAGE_ROOT"
 chmod +x   "$PROJECT_DIR"/runner/*.sh   "$PROJECT_DIR"/hooks/*.sh   "$PROJECT_DIR"/scripts/*.sh
