@@ -16,6 +16,20 @@ for file in scripts/*.sh hooks/*.sh runner/*.sh tests/*.sh; do
   fi
 done
 
+for executable in \
+  hooks/cache-pressure.sh \
+  hooks/runner-lease.sh \
+  runner/entrypoint.sh \
+  scripts/cleanup-guards.sh \
+  scripts/loop-maintenance.sh \
+  scripts/storage-policy.sh; do
+  if [[ -x "$executable" ]]; then
+    ok "Modo ejecutable: $executable"
+  else
+    fail "Modo ejecutable: $executable"
+  fi
+done
+
 if jq empty config/docker-daemon.json >/dev/null 2>&1; then
   ok "JSON Docker daemon"
 else
