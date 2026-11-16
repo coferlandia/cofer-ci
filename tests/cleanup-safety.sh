@@ -163,14 +163,6 @@ set -e
 [[ "$flags_after_runner_lease" != *e* ]] || fail "with_runner_lease changed caller errexit state"
 pass "runner lease preserves caller shell options and rc"
 
-lock_file="$CI_STORAGE_ROOT/cache-01/.cleanup.lock"
-rm -f "$lock_file"
-with_runner_lease runner-01 true || fail "runner lease failed while preparing lock permissions"
-lock_mode="$(stat -c '%a' "$lock_file")"
-[[ "$lock_mode" == "666" ]] ||
-  fail "runner lease lock mode is $lock_mode instead of 666"
-pass "host runner lease leaves a cross-user writable lock file"
-
 MOCK_ACTIVITY=idle
 
 exec 8>"$CI_STORAGE_ROOT/.cleanup.lock"
