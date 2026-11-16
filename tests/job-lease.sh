@@ -23,10 +23,13 @@ with_runner_cleanup_lease mark_called || fail "free runner lease rejected"
 [[ -f "$called" ]] || fail "runner lease did not execute protected command"
 pass "free runner lease executes protected command"
 
-lock_mode="$(stat -c '%a' "$RUNNER_CLEANUP_LOCK_FILE")"
-[[ "$lock_mode" == "666" ]] ||
-  fail "runner hook lock mode is $lock_mode instead of 666"
-pass "runner hook leaves a cross-user writable lock file"
+rm -f "$called"
+chmod 0444 "$RUNNER_CLEANUP_LOCK_FILE"
+with_runner_cleanup_lease mark_called ||
+  fail "runner hook could not flock a readable non-writable legacy lock"
+[[ -f "$called" ]] ||
+  fail "runner hook did not execute under readable non-writable lock"
+pass "runner hook accepts readable lock without write permission"
 
 rm -f "$called"
 exec 8>"$RUNNER_CLEANUP_LOCK_FILE"
