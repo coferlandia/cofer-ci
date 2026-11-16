@@ -87,6 +87,18 @@ with_cleanup_lock() {
   return "$rc"
 }
 
+prepare_shared_runner_lock() {
+  local lock_file="${1:-}"
+
+  [[ -n "$lock_file" ]] || return 78
+
+  # The lock contains no data; it only carries an advisory flock. Host cleanup
+  # may run as root while runner hooks run as the non-root runner user, so both
+  # contexts must be able to open the same inode for writing.
+  : > "$lock_file" || return 73
+  chmod 0666 "$lock_file" || return 73
+}
+
 with_runner_lease() {
   local service="${1:-}" timeout="${HOST_CLEANUP_LEASE_WAIT_SECONDS:-0}"
   local index cache lock_file fd rc
@@ -98,6 +110,8 @@ with_runner_lease() {
   cache="$CI_STORAGE_ROOT/cache-$index"
   [[ -d "$cache" ]] || return 78
   lock_file="$cache/.cleanup.lock"
+
+  prepare_shared_runner_lock "$lock_file" || return $?
 
   exec {fd}>"$lock_file"
   if ! flock -w "$timeout" "$fd"; then
